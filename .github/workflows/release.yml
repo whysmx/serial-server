@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        go-version: ["1.24"]
+        arch: [amd64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Build
+        shell: pwsh
+        run: |
+          go env
+          go build -trimpath -ldflags "-s -w" -o serial-server.exe .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: serial-server-windows-${{ matrix.arch }}.exe
+          path: serial-server.exe
+
+  build-ubuntu-arm64:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ["1.24"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Build
+        run: |
+          go env
+          GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o serial-server .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: serial-server-linux-arm64
+          path: serial-server
+
+  release:
+    needs: [build-windows, build-ubuntu-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files_from_asset_name: |
+            serial-server-windows-*.exe
+            serial-server-linux-arm64
+          files: artifacts/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
