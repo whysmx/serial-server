@@ -1,4 +1,4 @@
-module serial-server
+module github.com/whysmx/serial-server
 
 go 1.24.0
 
