@@ -1,8 +1,10 @@
-package main
+package fuzz
 
 import (
 	"os"
 	"testing"
+
+	"github.com/whysmx/serial-server/config"
 )
 
 // Fuzz tests for configuration parsing
@@ -23,7 +25,7 @@ func FuzzParseConfig(f *testing.F) {
 		}
 
 		// Try to load - should not crash
-		_, _ = Load(configPath)
+		_, _ = config.Load(configPath)
 	})
 }
 
@@ -36,8 +38,8 @@ func FuzzListenerConfig(f *testing.F) {
 	f.Add("listener_with_underscore")
 
 	f.Fuzz(func(t *testing.T, name string) {
-		cfg := &Config{
-			Listeners: []*ListenerConfig{
+		cfg := &config.Config{
+			Listeners: []*config.ListenerConfig{
 				{
 					Name:          name,
 					SerialPort:    "/dev/ttyUSB0",

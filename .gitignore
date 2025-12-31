@@ -1,8 +1,19 @@
 # Binaries
 serial-server
 serial-server-*
+serial-server.exe
 *-test
 *-fixed
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test coverage
+*.out
+coverage.out
+coverage.html
+*.coverprofile
 
 # Config
 config.ini
@@ -14,6 +25,7 @@ docs/menu-styles.html
 scripts/
 .claude/
 CLAUDE.md
+.claude/
 
 # Logs
 *.log
@@ -21,8 +33,15 @@ CLAUDE.md
 # IDE
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
 *.bak
+
+# Go specific
+vendor/
+

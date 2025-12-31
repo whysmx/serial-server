@@ -1,5 +1,5 @@
-// Package main - serial-server
-package main
+// Package config - configuration management
+package config
 
 import (
 	"fmt"

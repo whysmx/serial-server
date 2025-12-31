@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/whysmx/serial-server/listener"
 	"flag"
 	"fmt"
 	"log"
@@ -14,6 +13,11 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/whysmx/serial-server/config"
+	"github.com/whysmx/serial-server/frp"
+	"github.com/whysmx/serial-server/listener"
+	"github.com/whysmx/serial-server/wizard"
 )
 
 const (
@@ -39,7 +43,7 @@ var (
 	logFile      string
 	logLevel     string
 	showVersion  bool
-	cfg          *Config
+	cfg          *config.Config
 )
 
 func init() {
@@ -125,7 +129,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintln(os.Stderr, "未检测到配置，进入添加配置流程...")
 		fmt.Fprintln(os.Stderr, "")
-		wiz := NewWizard()
+		wiz := wizard.NewWizard()
 		newCfg, err := wiz.RunAddOnly(cfg)
 		if err != nil {
 			// 检查是否是没有串口的情况
@@ -151,7 +155,7 @@ func main() {
 			log.Fatalf("配置向导失败: %v", err)
 		}
 		cfg = newCfg
-		if err := Save(configPath, cfg); err != nil {
+		if err := config.Save(configPath, cfg); err != nil {
 			log.Fatalf("保存配置失败: %v", err)
 		}
 	}
@@ -186,7 +190,7 @@ showMenu:
 			// 直接启动，继续执行
 		case "2":
 			// 添加新配置（直接进入添加模式，不询问是否添加）
-			wiz := NewWizard()
+			wiz := wizard.NewWizard()
 			newCfg, err := wiz.RunAddOnly(cfg)
 			if err != nil {
 				// 检查是否是没有串口的情况
@@ -214,13 +218,13 @@ showMenu:
 				os.Exit(1)
 			}
 			cfg = newCfg
-			if err := Save(configPath, cfg); err != nil {
+			if err := config.Save(configPath, cfg); err != nil {
 				log.Printf("保存配置失败: %v", err)
 			}
 			fmt.Fprintln(os.Stderr, "配置已保存，重新启动程序...")
 			fmt.Fprintln(os.Stderr, "")
 			// 重新加载配置并继续
-			cfg, err = Load(configPath)
+			cfg, err = config.Load(configPath)
 			if err != nil {
 				log.Fatalf("重新加载配置失败: %v", err)
 			}
@@ -237,7 +241,7 @@ showMenu:
 			fmt.Fprintln(os.Stderr, "配置已保存，重新启动程序...")
 			fmt.Fprintln(os.Stderr, "")
 			// 重新加载配置并继续
-			cfg, err = Load(configPath)
+			cfg, err = config.Load(configPath)
 			if err != nil {
 				log.Fatalf("重新加载配置失败: %v", err)
 			}
@@ -254,7 +258,7 @@ showMenu:
 			fmt.Fprintln(os.Stderr, "配置已删除，重新启动程序...")
 			fmt.Fprintln(os.Stderr, "")
 			// 重新加载配置并继续
-			cfg, err = Load(configPath)
+			cfg, err = config.Load(configPath)
 			if err != nil {
 				log.Fatalf("重新加载配置失败: %v", err)
 			}
@@ -335,7 +339,7 @@ showMenu:
 			} else if choice == "0" || choice == "" {
 				// 重新加载配置
 				fmt.Fprintln(os.Stderr, "\n正在重新加载配置...")
-				cfg, err = Load(configPath)
+				cfg, err = config.Load(configPath)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "⚠️  加载配置失败: %v\n", err)
 					fmt.Fprintln(os.Stderr, "请检查配置文件格式是否正确")
@@ -362,7 +366,7 @@ showMenu:
 }
 
 // modifyConfigInteractively 交互式修改配置
-func modifyConfigInteractively(cfg *Config, configPath string) error {
+func modifyConfigInteractively(cfg *config.Config, configPath string) error {
 	if len(cfg.Listeners) == 0 {
 		return fmt.Errorf("没有可修改的监听器配置")
 	}
@@ -514,7 +518,7 @@ func modifyConfigInteractively(cfg *Config, configPath string) error {
 	}
 
 	// 保存配置
-	return Save(configPath, cfg)
+	return config.Save(configPath, cfg)
 }
 
 func setupLogging() {
@@ -552,7 +556,7 @@ func findConfigFile(name string) string {
 	return name
 }
 
-func loadOrCreateConfig(path string) (*Config, error) {
+func loadOrCreateConfig(path string) (*config.Config, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		if !wizardMode {
 			fmt.Println("未找到配置文件，进入配置向导...")
@@ -560,25 +564,25 @@ func loadOrCreateConfig(path string) (*Config, error) {
 		}
 	}
 
-	var cfg *Config
+	var cfg *config.Config
 	var err error
 
 	if wizardMode {
-		wiz := NewWizard()
-		cfg, err = wiz.Run(&Config{})
+		wiz := wizard.NewWizard()
+		cfg, err = wiz.Run(&config.Config{})
 		if err != nil {
 			return nil, fmt.Errorf("配置向导失败: %w", err)
 		}
 
 		if cfg != nil && len(cfg.Listeners) > 0 {
-			if err := Save(path, cfg); err != nil {
+			if err := config.Save(path, cfg); err != nil {
 				log.Printf("[WARN] 保存配置失败: %v", err)
 			} else {
 				fmt.Printf("配置已保存到 %s\n", path)
 			}
 		}
 	} else {
-		cfg, err = Load(path)
+		cfg, err = config.Load(path)
 		if err != nil {
 			return nil, fmt.Errorf("加载配置失败: %w", err)
 		}
@@ -587,7 +591,7 @@ func loadOrCreateConfig(path string) (*Config, error) {
 	return cfg, nil
 }
 
-func runApp(cfg *Config) error {
+func runApp(cfg *config.Config) error {
 	listeners := make([]*listener.Listener, 0, len(cfg.Listeners))
 
 	for _, lcfg := range cfg.Listeners {
@@ -795,7 +799,7 @@ func runApp(cfg *Config) error {
 	return nil
 }
 
-func printConfigSummary(cfg *Config) {
+func printConfigSummary(cfg *config.Config) {
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintf(os.Stderr, "%s配置摘要:%s\n", colorGreen, colorReset)
 	for i, l := range cfg.Listeners {
@@ -815,7 +819,7 @@ func printConfigSummary(cfg *Config) {
 
 // checkFRPStatus 检查端口是否已在 FRP 中添加代理
 func checkFRPStatus(serialPort string, port int) string {
-	client := NewClient()
+	client := frp.NewClient()
 	proxyNames, proxyPorts, err := client.GetAllSerialServerProxies()
 	if err != nil {
 		return emojiNo
@@ -830,12 +834,12 @@ func checkFRPStatus(serialPort string, port int) string {
 	return emojiNo
 }
 
-func printConfigSummaryToStderr(cfg *Config) {
+func printConfigSummaryToStderr(cfg *config.Config) {
 	printConfigSummary(cfg)
 }
 
 // deleteConfigInteractively 交互式删除配置
-func deleteConfigInteractively(cfg *Config, configPath string) error {
+func deleteConfigInteractively(cfg *config.Config, configPath string) error {
 	if len(cfg.Listeners) == 0 {
 		return fmt.Errorf("没有可删除的配置")
 	}
@@ -874,7 +878,7 @@ func deleteConfigInteractively(cfg *Config, configPath string) error {
 	cfg.Listeners = append(cfg.Listeners[:idx-1], cfg.Listeners[idx:]...)
 
 	// 保存配置
-	if err := Save(configPath, cfg); err != nil {
+	if err := config.Save(configPath, cfg); err != nil {
 		return err
 	}
 
@@ -951,10 +955,10 @@ func frpAddProxy() {
 	listener := cfg.Listeners[idx-1]
 	port := listener.ListenPort
 
-	proxyName := SafeProxyName(listener.SerialPort, port)
+	proxyName := frp.SafeProxyName(listener.SerialPort, port)
 	fmt.Fprintf(os.Stderr, "正在添加 STCP 代理 [%s]...\n", proxyName)
 
-	client := NewClient()
+	client := frp.NewClient()
 	if err := client.AddSTCPProxy(listener.SerialPort, port); err != nil {
 		fmt.Fprintf(os.Stderr, "%s打叉 %s添加失败: %v\n", colorRed, colorReset, err)
 	} else {
@@ -967,7 +971,7 @@ func frpShowConfig() {
 	fmt.Fprintf(os.Stderr, "%s当前 FRP 配置%s\n", colorGreen, colorReset)
 	fmt.Fprintf(os.Stderr, "%s━━━━━━━━━━━━━━━%s\n", colorGreen, colorReset)
 
-	client := NewClient()
+	client := frp.NewClient()
 	config, err := client.GetConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s打叉 %s获取配置失败: %v\n", colorRed, colorReset, err)
@@ -982,7 +986,7 @@ func frpCleanupProxies() {
 	fmt.Fprintf(os.Stderr, "%s清理所有串口代理%s\n", colorGreen, colorReset)
 	fmt.Fprintf(os.Stderr, "%s━━━━━━━━━━━━━━━━━━━━%s\n", colorGreen, colorReset)
 
-	client := NewClient()
+	client := frp.NewClient()
 	proxyNames, proxyPorts, err := client.GetAllSerialServerProxies()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s打叉 %s获取配置失败: %v\n", colorRed, colorReset, err)
@@ -1078,15 +1082,15 @@ func listSerialPorts() {
 	}
 }
 
-func scanSerialPorts() []PortInfo {
-	var ports []PortInfo
+func scanSerialPorts() []wizard.PortInfo {
+	var ports []wizard.PortInfo
 
 	// 扫描可用串口
 	availablePorts := listener.ScanAvailablePorts()
 
 	for _, p := range availablePorts {
 		desc := getPortDescription(p)
-		ports = append(ports, PortInfo{Port: p, Desc: desc})
+		ports = append(ports, wizard.PortInfo{Port: p, Desc: desc})
 	}
 
 	return ports
@@ -1115,7 +1119,7 @@ func contains(s, substr string) bool {
 }
 
 func checkConfiguration() error {
-	cfg, err := Load(configFile)
+	cfg, err := config.Load(configFile)
 	if err != nil {
 		return err
 	}

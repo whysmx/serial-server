@@ -1,5 +1,5 @@
 // Package main - serial-server
-package main
+package frp
 
 import (
 	"fmt"

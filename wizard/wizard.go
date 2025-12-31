@@ -1,5 +1,5 @@
 // Package main - serial-server
-package main
+package wizard
 
 import (
 	"bufio"
@@ -7,10 +7,22 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/whysmx/serial-server/config"
+	"github.com/whysmx/serial-server/listener"
 )
 
-// 经典绿风格 - 状态文字
 const (
+	// Default serial port configuration
+	DefaultBaudRate      = 115200
+	DefaultDataBits      = 8
+	DefaultStopBits      = 1
+	DefaultParity        = "N"
+	DefaultDisplayFormat = "HEX"
+
+	// Emoji for status display
+	emojiYes = "打勾"
+	emojiNo  = "打叉"
 )
 
 // PortInfo represents information about a serial port.
@@ -32,7 +44,7 @@ func NewWizard() *Wizard {
 }
 
 // Run runs the configuration wizard.
-func (w *Wizard) Run(cfg *Config) (*Config, error) {
+func (w *Wizard) Run(cfg *config.Config) (*config.Config, error) {
 	fmt.Println()
 	fmt.Println("  Serial-Server 串口服务器配置向导")
 	fmt.Println("  ─────────────────────────────────")
@@ -115,7 +127,7 @@ func (w *Wizard) Run(cfg *Config) (*Config, error) {
 }
 
 // RunAddOnly 添加新配置（跳过确认提示，直接进入添加流程）
-func (w *Wizard) RunAddOnly(cfg *Config) (*Config, error) {
+func (w *Wizard) RunAddOnly(cfg *config.Config) (*config.Config, error) {
 	fmt.Println()
 	fmt.Println("  Serial-Server 串口服务器配置向导")
 	fmt.Println("  ─────────────────────────────────")
@@ -137,7 +149,7 @@ func (w *Wizard) RunAddOnly(cfg *Config) (*Config, error) {
 }
 
 // runAddPorts 执行添加串口的逻辑
-func (w *Wizard) runAddPorts(cfg *Config) (*Config, error) {
+func (w *Wizard) runAddPorts(cfg *config.Config) (*config.Config, error) {
 	// Scan for serial ports
 	fmt.Println("  扫描串口设备...")
 	ports := w.scanPorts()
@@ -234,8 +246,8 @@ func (w *Wizard) selectPort(ports []PortInfo) string {
 }
 
 // configureSerialListener configures a serial listener.
-func (w *Wizard) configureSerialListener(port string, num int) *ListenerConfig {
-	l := &ListenerConfig{
+func (w *Wizard) configureSerialListener(port string, num int) *config.ListenerConfig {
+	l := &config.ListenerConfig{
 		Name:          fmt.Sprintf("device_%d", num),
 		SerialPort:    port,
 		ListenPort:    8000 + num,
@@ -414,7 +426,7 @@ func (w *Wizard) WaitForEnter() {
 }
 
 // PrintSummary prints a summary of the configuration.
-func (w *Wizard) PrintSummary(cfg *Config) {
+func (w *Wizard) PrintSummary(cfg *config.Config) {
 	fmt.Println()
 	fmt.Println("  配置摘要:")
 	fmt.Println("  ───────")
@@ -430,4 +442,33 @@ func (w *Wizard) PrintSummary(cfg *Config) {
 		fmt.Printf("       显示格式: %s\n", l.DisplayFormat)
 		fmt.Println()
 	}
+}
+
+// ScanAvailablePorts scans for available serial ports
+func ScanAvailablePorts() []string {
+	return listener.ScanAvailablePorts()
+}
+
+// getPortDescription returns a description for a serial port
+func getPortDescription(port string) string {
+	if contains(port, "usb") {
+		return "USB 串口设备"
+	}
+	if contains(port, "ttyS") {
+		return "标准串口"
+	}
+	if contains(port, "ttyACM") {
+		return "USB CDC 设备"
+	}
+	return "串口设备"
+}
+
+// contains checks if substr is in s (case sensitive)
+func contains(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
