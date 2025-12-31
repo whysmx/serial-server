@@ -352,7 +352,6 @@ func (w *Wizard) scanPorts() []PortInfo {
 	return ports
 }
 
-
 // readLine reads a line from stdin.
 func (w *Wizard) readLine() string {
 	line, _ := w.reader.ReadString('\n')

@@ -10,7 +10,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
 )
 
 // DisplayFormat represents the data display format.
@@ -78,20 +77,20 @@ type Listener struct {
 // NewListener creates a new serial listener.
 func NewListener(name string, listenPort int, serialPort string, baudRate int, dataBits int, stopBits int, parity string, displayFormat DisplayFormat) *Listener {
 	return &Listener{
-		name:          name,
-		listenPort:    listenPort,
-		serialPort:    serialPort,
-		baudRate:      baudRate,
-		dataBits:      dataBits,
-		stopBits:      stopBits,
-		parity:        parity,
-		displayFormat: displayFormat,
-		clients:       make(map[string]net.Conn),
+		name:           name,
+		listenPort:     listenPort,
+		serialPort:     serialPort,
+		baudRate:       baudRate,
+		dataBits:       dataBits,
+		stopBits:       stopBits,
+		parity:         parity,
+		displayFormat:  displayFormat,
+		clients:        make(map[string]net.Conn),
 		clientIndexMap: make(map[string]string),
 		clientCounter:  0,
-		rxChan:        make(chan []byte, 1024),
-		stopChan:      make(chan struct{}),
-		doneChan:      make(chan struct{}),
+		rxChan:         make(chan []byte, 1024),
+		stopChan:       make(chan struct{}),
+		doneChan:       make(chan struct{}),
 	}
 }
 
@@ -219,7 +218,7 @@ func (l *Listener) handleClient(conn net.Conn, addr string) {
 	l.clientCounter++
 	clientIndex := fmt.Sprintf("#%d", l.clientCounter)
 	l.clientIndexMap[addr] = clientIndex
-	clientCount := len(l.clients)  // Get count BEFORE releasing lock
+	clientCount := len(l.clients) // Get count BEFORE releasing lock
 	l.mu.Unlock()
 
 	// Log AFTER releasing lock to avoid deadlock
@@ -231,7 +230,7 @@ func (l *Listener) handleClient(conn net.Conn, addr string) {
 		if _, ok := l.clients[addr]; ok {
 			delete(l.clients, addr)
 			delete(l.clientIndexMap, addr)
-			remaining := len(l.clients)  // Get count BEFORE releasing lock
+			remaining := len(l.clients) // Get count BEFORE releasing lock
 			l.mu.Unlock()
 			log.Printf("[listener:%s] client disconnected %s (remaining: %d)",
 				l.name, clientIndex, remaining)

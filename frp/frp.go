@@ -30,29 +30,29 @@ func SafeProxyName(serialPort string, localPort int) string {
 
 // Client provides methods to interact with local FRP Dashboard API.
 type Client struct {
-	baseURL      string
-	adminUser    string
+	baseURL       string
+	adminUser     string
 	adminPassword string
-	httpClient   *http.Client
+	httpClient    *http.Client
 }
 
 // NewClient creates a new FRP client.
 func NewClient() *Client {
 	return &Client{
-		baseURL:      FRPCAdminURL,
-		adminUser:    FRPCAdminUser,
+		baseURL:       FRPCAdminURL,
+		adminUser:     FRPCAdminUser,
 		adminPassword: FRPCAdminPassword,
-		httpClient:   &http.Client{},
+		httpClient:    &http.Client{},
 	}
 }
 
 // NewClientWithConfig creates a new FRP client with custom settings.
 func NewClientWithConfig(baseURL, adminUser, adminPassword string) *Client {
 	return &Client{
-		baseURL:      baseURL,
-		adminUser:    adminUser,
+		baseURL:       baseURL,
+		adminUser:     adminUser,
 		adminPassword: adminPassword,
-		httpClient:   &http.Client{},
+		httpClient:    &http.Client{},
 	}
 }
 
@@ -399,4 +399,3 @@ func (c *Client) RemoveSerialServerProxy(proxyName string) error {
 
 	return c.Reload()
 }
-

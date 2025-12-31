@@ -47,7 +47,7 @@ func TestListenerCreation(t *testing.T) {
 func TestListenerStartStop(t *testing.T) {
 	l := NewListener(
 		"test_device",
-		9998, // Use different port to avoid conflicts
+		9998,               // Use different port to avoid conflicts
 		"/dev/nonexistent", // Non-existent serial port
 		115200,
 		8,
@@ -344,8 +344,8 @@ func TestGetConfigMethods(t *testing.T) {
 		9995,
 		"/dev/ttyUSB0",
 		115200,
-		7, // data bits
-		2, // stop bits
+		7,   // data bits
+		2,   // stop bits
 		"E", // parity
 		FormatUTF8,
 	)

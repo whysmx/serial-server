@@ -82,7 +82,7 @@ func (c *RequestCache) CleanupExpired() {
 
 // PendingRequest represents a request waiting for serial response.
 type PendingRequest struct {
-	ID         uint64        // Unique identifier for response matching
+	ID         uint64 // Unique identifier for response matching
 	ClientID   string
 	DataHash   uint64
 	Request    []byte

@@ -44,14 +44,14 @@ func TestParseComUsbPair(t *testing.T) {
 			expected: map[string]string{},
 		},
 		{
-			name: "valid COM entry",
+			name:  "valid COM entry",
 			input: "lrwxrwxrwx 1 root root 7 Jan 1 00:00 COM1 -> /dev/ttyUSB0",
 			expected: map[string]string{
 				"COM1": "/dev/ttyUSB0",
 			},
 		},
 		{
-			name: "valid RS485 entry",
+			name:  "valid RS485 entry",
 			input: "lrwxrwxrwx 1 root root 7 Jan 1 00:00 RS485_1 -> /dev/ttyUSB0",
 			expected: map[string]string{
 				"RS485_1": "/dev/ttyUSB0",

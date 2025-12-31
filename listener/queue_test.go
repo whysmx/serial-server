@@ -282,12 +282,12 @@ func TestCacheDataIntegrity(t *testing.T) {
 		hash uint64
 		data []byte
 	}{
-		{1, []byte{}},                              // Empty
-		{2, []byte{0x00}},                          // Single zero byte
-		{3, []byte{0xFF, 0xFF, 0xFF}},              // All max bytes
-		{4, []byte("Hello, World!")},                // String
+		{1, []byte{}},                             // Empty
+		{2, []byte{0x00}},                         // Single zero byte
+		{3, []byte{0xFF, 0xFF, 0xFF}},             // All max bytes
+		{4, []byte("Hello, World!")},              // String
 		{5, []byte{0x01, 0x02, 0x03, 0x04, 0x05}}, // Sequential
-		{6, make([]byte, 1024)},                    // Large data
+		{6, make([]byte, 1024)},                   // Large data
 	}
 
 	for _, tc := range testCases {
