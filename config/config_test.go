@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -263,3 +264,125 @@ func TestSaveMultipleListeners(t *testing.T) {
 		t.Errorf("Expected parity 'E', got '%s'", l2.Parity)
 	}
 }
+
+// ==================== Benchmarks ====================
+
+// BenchmarkLoadConfig benchmarks config loading performance
+func BenchmarkLoadConfig(b *testing.B) {
+	configContent := `[listener1]
+serial_port=/dev/ttyUSB0
+listen_port=8000
+baud_rate=115200
+data_bits=8
+stop_bits=1
+parity=N
+display_format=HEX
+
+[listener2]
+serial_port=/dev/ttyUSB1
+listen_port=8001
+baud_rate=9600
+data_bits=8
+stop_bits=1
+parity=N
+display_format=UTF8
+
+[listener3]
+serial_port=/dev/ttyUSB2
+listen_port=8002
+baud_rate=57600
+data_bits=8
+stop_bits=1
+parity=E
+display_format=GB2312
+`
+
+	// Create temporary config file
+	tmpFile, err := os.CreateTemp("", "config-*.ini")
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(configContent); err != nil {
+		b.Fatal(err)
+	}
+	tmpFile.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = Load(tmpFile.Name())
+	}
+}
+
+// BenchmarkLoadConfigLarge benchmarks large config loading
+func BenchmarkLoadConfigLarge(b *testing.B) {
+	var configContent string
+	// Generate config with 50 listeners
+	for i := 1; i <= 50; i++ {
+		configContent += fmt.Sprintf("[listener%d]\n", i)
+		configContent += fmt.Sprintf("serial_port=/dev/ttyUSB%d\n", i)
+		configContent += fmt.Sprintf("listen_port=%d\n", 8000+i)
+		configContent += "baud_rate=115200\n"
+		configContent += "data_bits=8\n"
+		configContent += "stop_bits=1\n"
+		configContent += "parity=N\n"
+		configContent += "display_format=HEX\n\n"
+	}
+
+	// Create temporary config file
+	tmpFile, err := os.CreateTemp("", "config-*.ini")
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(configContent); err != nil {
+		b.Fatal(err)
+	}
+	tmpFile.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = Load(tmpFile.Name())
+	}
+}
+
+// BenchmarkFindListenerByName benchmarks listener lookup by name
+func BenchmarkFindListenerByName(b *testing.B) {
+	cfg := &Config{
+		Listeners: make([]*ListenerConfig, 100),
+	}
+	for i := 0; i < 100; i++ {
+		cfg.Listeners[i] = &ListenerConfig{
+			Name:       fmt.Sprintf("listener%d", i),
+			SerialPort: fmt.Sprintf("/dev/ttyUSB%d", i),
+			ListenPort: 8000 + i,
+		}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cfg.FindListenerByName("listener50")
+	}
+}
+
+// BenchmarkFindListenerByPort benchmarks listener lookup by port
+func BenchmarkFindListenerByPort(b *testing.B) {
+	cfg := &Config{
+		Listeners: make([]*ListenerConfig, 100),
+	}
+	for i := 0; i < 100; i++ {
+		cfg.Listeners[i] = &ListenerConfig{
+			Name:       fmt.Sprintf("listener%d", i),
+			SerialPort: fmt.Sprintf("/dev/ttyUSB%d", i),
+			ListenPort: 8000 + i,
+		}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cfg.FindListenerByPort(8050)
+	}
+}
+
