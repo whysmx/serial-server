@@ -7,6 +7,9 @@ serial-server-*
 # Config
 config.ini
 
+# Docs (临时文件)
+docs/menu-styles.html
+
 # Logs
 *.log
 
