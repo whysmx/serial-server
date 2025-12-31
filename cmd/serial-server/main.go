@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,8 +31,8 @@ const (
 	colorReset = "\x1b[0m"  // 重置
 
 	// 经典绿风格 - 状态文字
-	emojiYes = "✅" // 已添加/已配置
-	emojiNo  = "❌" // 未添加/未配置
+	emojiYes = "[√]" // 已添加/已配置
+	emojiNo  = "[×]" // 未添加/未配置
 )
 
 var (
@@ -44,6 +45,9 @@ var (
 	logLevel    string
 	showVersion bool
 	cfg         *config.Config
+
+	// 运行时颜色控制
+	useColor bool
 )
 
 func init() {
@@ -58,6 +62,44 @@ func init() {
 	flag.StringVar(&logLevel, "level", "info", "日志级别: debug, info, warn, error")
 	flag.BoolVar(&showVersion, "version", false, "显示版本信息")
 	flag.BoolVar(&showVersion, "v", false, "显示版本信息")
+
+	// 检测是否应该使用颜色
+	// Windows CMD/PowerShell 默认不支持 ANSI 颜色，除非启用 VirtualTerminal
+	// 检测环境变量来判断
+	useColor = shouldUseColor()
+}
+
+// shouldUseColor 检测终端是否支持颜色
+func shouldUseColor() bool {
+	// 检查 NO_COLOR 环境变量
+	if os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+
+	// 检查 TERM 环境变量
+	term := os.Getenv("TERM")
+	if term == "" || term == "dumb" {
+		return false
+	}
+
+	// Windows 特殊处理
+	if runtime.GOOS == "windows" {
+		// Windows 10+ 的 CMD/PowerShell 支持 ANSI，但需要检测
+		// 如果设置了 TERM=xterm 或其他支持的终端类型，则启用
+		if term == "xterm" || term == "xterm-256color" || term == "cygwin" {
+			return true
+		}
+		// 检查是否在支持 ANSI 的终端中运行（如 Windows Terminal, ConEmu 等）
+		if os.Getenv("WT_SESSION") != "" || // Windows Terminal
+			os.Getenv("ConEmuPID") != "" { // ConEmu
+			return true
+		}
+		// 默认 Windows CMD/PowerShell 不使用颜色
+		return false
+	}
+
+	// Unix-like 系统通常支持颜色
+	return true
 }
 
 func main() {
@@ -164,20 +206,20 @@ func main() {
 showMenu:
 	if !listPorts && !checkConfig && !wizardMode {
 		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s                    Serial-Server 启动菜单%s\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", colorGreen, colorReset)
+		fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s                    Serial-Server 启动菜单%s\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
 		fmt.Fprintln(os.Stderr, "")
 		printConfigSummaryToStderr(cfg)
-		fmt.Fprintf(os.Stderr, "%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s请选择操作:%s\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s  1 %s- 直接启动程序\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s  2 %s- 添加新配置\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s  3 %s- 修改配置\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s  4 %s- 删除配置\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s  5 %s- FRP 管理\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s  0 %s- 退出\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "\n%s请输入选项 [1/2/3/4/5/0]: %s", colorGreen, colorReset)
+		fmt.Fprintf(os.Stderr, "%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s请选择操作:%s\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  1 %s- 直接启动程序\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  2 %s- 添加新配置\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  3 %s- 修改配置\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  4 %s- 删除配置\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  5 %s- FRP 管理\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  0 %s- 退出\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "\n%s请输入选项 [1/2/3/4/5/0]: %s", getGreen(), getReset())
 
 		var choice string
 		_, _ = fmt.Scanln(&choice)
@@ -802,19 +844,19 @@ func runApp(cfg *config.Config) error {
 
 func printConfigSummary(cfg *config.Config) {
 	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintf(os.Stderr, "%s配置摘要:%s\n", colorGreen, colorReset)
+	fmt.Fprintf(os.Stderr, "%s配置摘要:%s\n", getGreen(), getReset())
 	for i, l := range cfg.Listeners {
 		frpStatus := checkFRPStatus(l.SerialPort, l.ListenPort)
 		// 根据 FRP 状态选择颜色
 		var statusColor string
 		if frpStatus == emojiYes {
-			statusColor = colorGreen
+			statusColor = getGreen()
 		} else {
-			statusColor = colorRed
+			statusColor = getRed()
 		}
 		fmt.Fprintf(os.Stderr, "  %d. %s:[%d %s %d %d %s] 端口[%d] frp[%s%s%s]\n",
 			i+1, l.SerialPort, l.BaudRate, l.Parity, l.DataBits, l.StopBits, l.DisplayFormat, l.ListenPort,
-			statusColor, frpStatus, colorReset)
+			statusColor, frpStatus, getReset())
 	}
 }
 
@@ -891,16 +933,16 @@ func deleteConfigInteractively(cfg *config.Config, configPath string) error {
 func runFRPMenu() {
 	for {
 		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s                    FRP 管理菜单%s\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", colorGreen, colorReset)
+		fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s                    FRP 管理菜单%s\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
 		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintf(os.Stderr, "%s请选择操作:%s\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s  1 %s- 添加 STCP 代理\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s  2 %s- 查看当前配置\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s  3 %s- 清理所有串口代理\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "%s  0 %s- 返回上级菜单\n", colorGreen, colorReset)
-		fmt.Fprintf(os.Stderr, "\n%s请输入选项 [1/2/3/0]: %s", colorGreen, colorReset)
+		fmt.Fprintf(os.Stderr, "%s请选择操作:%s\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  1 %s- 添加 STCP 代理\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  2 %s- 查看当前配置\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  3 %s- 清理所有串口代理\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  0 %s- 返回上级菜单\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "\n%s请输入选项 [1/2/3/0]: %s", getGreen(), getReset())
 
 		var choice string
 		_, _ = fmt.Scanln(&choice)
@@ -961,21 +1003,21 @@ func frpAddProxy() {
 
 	client := frp.NewClient()
 	if err := client.AddSTCPProxy(listener.SerialPort, port); err != nil {
-		fmt.Fprintf(os.Stderr, "%s打叉 %s添加失败: %v\n", colorRed, colorReset, err)
+		fmt.Fprintf(os.Stderr, "%s打叉 %s添加失败: %v\n", getRed(), getReset(), err)
 	} else {
-		fmt.Fprintf(os.Stderr, "%s打勾 %s成功添加 STCP 代理 [%s]\n", colorGreen, colorReset, proxyName)
+		fmt.Fprintf(os.Stderr, "%s打勾 %s成功添加 STCP 代理 [%s]\n", getGreen(), getReset(), proxyName)
 	}
 }
 
 // frpShowConfig 查看当前 FRP 配置
 func frpShowConfig() {
-	fmt.Fprintf(os.Stderr, "%s当前 FRP 配置%s\n", colorGreen, colorReset)
-	fmt.Fprintf(os.Stderr, "%s━━━━━━━━━━━━━━━%s\n", colorGreen, colorReset)
+	fmt.Fprintf(os.Stderr, "%s当前 FRP 配置%s\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s━━━━━━━━━━━━━━━%s\n", getGreen(), getReset())
 
 	client := frp.NewClient()
 	config, err := client.GetConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s打叉 %s获取配置失败: %v\n", colorRed, colorReset, err)
+		fmt.Fprintf(os.Stderr, "%s打叉 %s获取配置失败: %v\n", getRed(), getReset(), err)
 		return
 	}
 
@@ -984,13 +1026,13 @@ func frpShowConfig() {
 
 // frpCleanupProxies 清理所有串口代理
 func frpCleanupProxies() {
-	fmt.Fprintf(os.Stderr, "%s清理所有串口代理%s\n", colorGreen, colorReset)
-	fmt.Fprintf(os.Stderr, "%s━━━━━━━━━━━━━━━━━━━━%s\n", colorGreen, colorReset)
+	fmt.Fprintf(os.Stderr, "%s清理所有串口代理%s\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s━━━━━━━━━━━━━━━━━━━━%s\n", getGreen(), getReset())
 
 	client := frp.NewClient()
 	proxyNames, proxyPorts, err := client.GetAllSerialServerProxies()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s打叉 %s获取配置失败: %v\n", colorRed, colorReset, err)
+		fmt.Fprintf(os.Stderr, "%s打叉 %s获取配置失败: %v\n", getRed(), getReset(), err)
 		return
 	}
 
@@ -1025,9 +1067,9 @@ func frpCleanupProxies() {
 	}
 
 	if successCount > 0 {
-		fmt.Fprintf(os.Stderr, "%s打勾 %s已清理 %d 个串口代理配置\n", colorGreen, colorReset, successCount)
+		fmt.Fprintf(os.Stderr, "%s打勾 %s已清理 %d 个串口代理配置\n", getGreen(), getReset(), successCount)
 	} else {
-		fmt.Fprintf(os.Stderr, "%s打叉 %s清理失败\n", colorRed, colorReset)
+		fmt.Fprintf(os.Stderr, "%s打叉 %s清理失败\n", getRed(), getReset())
 	}
 }
 
@@ -1142,4 +1184,28 @@ func checkConfiguration() error {
 // ScanAvailablePorts 扫描可用串口（包装函数）
 func ScanAvailablePorts() []string {
 	return listener.ScanAvailablePorts()
+}
+
+// getGreen 返回绿色代码（如果支持颜色）
+func getGreen() string {
+	if useColor {
+		return getGreen()
+	}
+	return ""
+}
+
+// getRed 返回红色代码（如果支持颜色）
+func getRed() string {
+	if useColor {
+		return getRed()
+	}
+	return ""
+}
+
+// getReset 返回重置代码（如果支持颜色）
+func getReset() string {
+	if useColor {
+		return getReset()
+	}
+	return ""
 }
