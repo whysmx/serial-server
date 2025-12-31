@@ -315,3 +315,76 @@ func TestCacheDataIntegrity(t *testing.T) {
 		}
 	}
 }
+
+
+// ==================== Benchmarks ====================
+
+// BenchmarkRequestCache benchmarks request cache operations
+func BenchmarkRequestCache(b *testing.B) {
+	cache := NewRequestCache()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		hash := uint64(i % 1000)
+		cache.Get(hash)
+		cache.SetWithTTL(hash, []byte("response"), time.Minute)
+	}
+}
+
+// BenchmarkRequestCacheParallel benchmarks concurrent cache access
+func BenchmarkRequestCacheParallel(b *testing.B) {
+	cache := NewRequestCache()
+
+	// Pre-populate cache
+	for i := 0; i < 100; i++ {
+		cache.SetWithTTL(uint64(i), []byte("response"), time.Minute)
+	}
+
+	b.RunParallel(func(pb *testing.PB) {
+		i := 0
+		for pb.Next() {
+			hash := uint64(i % 100)
+			cache.Get(hash)
+			i++
+		}
+	})
+}
+
+// BenchmarkRequestCacheSet benchmarks cache set operations
+func BenchmarkRequestCacheSet(b *testing.B) {
+	cache := NewRequestCache()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cache.Set(uint64(i), []byte("response"))
+	}
+}
+
+// BenchmarkRequestCacheGet benchmarks cache get operations
+func BenchmarkRequestCacheGet(b *testing.B) {
+	cache := NewRequestCache()
+	cache.Set(12345, []byte("response"))
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cache.Get(12345)
+	}
+}
+
+// BenchmarkRequestCacheCleanup benchmarks cache cleanup with expired entries
+func BenchmarkRequestCacheCleanup(b *testing.B) {
+	cache := NewRequestCache()
+
+	// Add 1000 entries with short TTL
+	for i := 0; i < 1000; i++ {
+		cache.SetWithTTL(uint64(i), []byte("response"), time.Millisecond)
+	}
+
+	// Wait for expiration
+	time.Sleep(200 * time.Millisecond)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cache.CleanupExpired()
+	}
+}

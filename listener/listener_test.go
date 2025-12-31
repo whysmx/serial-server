@@ -604,3 +604,80 @@ func TestFormatForDisplayCompact(t *testing.T) {
 		})
 	}
 }
+
+// ==================== Benchmarks ====================
+
+// BenchmarkFormatForDisplayHEX benchmarks HEX formatting performance
+func BenchmarkFormatForDisplayHEX(b *testing.B) {
+	data := make([]byte, 1024)
+	for i := range data {
+		data[i] = byte(i % 256)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = FormatForDisplay(data, FormatHEX)
+	}
+}
+
+// BenchmarkFormatForDisplayHEXSmall benchmarks small data (32 bytes) HEX formatting
+func BenchmarkFormatForDisplayHEXSmall(b *testing.B) {
+	data := make([]byte, 32)
+	for i := range data {
+		data[i] = byte(i % 256)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = FormatForDisplay(data, FormatHEX)
+	}
+}
+
+// BenchmarkFormatForDisplayHEXLarge benchmarks large data (4KB) HEX formatting
+func BenchmarkFormatForDisplayHEXLarge(b *testing.B) {
+	data := make([]byte, 4096)
+	for i := range data {
+		data[i] = byte(i % 256)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = FormatForDisplay(data, FormatHEX)
+	}
+}
+
+// BenchmarkFormatForDisplayUTF8 benchmarks UTF8 formatting performance
+func BenchmarkFormatForDisplayUTF8(b *testing.B) {
+	data := []byte("这是一段中文测试数据，用于测试UTF-8编码的性能表现。This is English text for performance testing. mixed混合内容.")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = FormatForDisplay(data, FormatUTF8)
+	}
+}
+
+// BenchmarkFormatForDisplayGB2312 benchmarks GB2312 formatting performance
+func BenchmarkFormatForDisplayGB2312(b *testing.B) {
+	data := make([]byte, 256)
+	for i := range data {
+		data[i] = byte(i % 256)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = FormatForDisplay(data, FormatGB2312)
+	}
+}
+
+// BenchmarkFormatForDisplayCompact benchmarks compact formatting
+func BenchmarkFormatForDisplayCompact(b *testing.B) {
+	data := make([]byte, 1024)
+	for i := range data {
+		data[i] = byte(i % 256)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = FormatForDisplayCompact(data, FormatHEX)
+	}
+}
