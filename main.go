@@ -1,7 +1,7 @@
 package main
 
 import (
-	"serial-server/listener"
+	"github.com/whysmx/serial-server/listener"
 	"flag"
 	"fmt"
 	"log"
