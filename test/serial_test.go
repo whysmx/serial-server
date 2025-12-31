@@ -168,13 +168,15 @@ func FindAvailableTCPPort() (int, error) {
 	// Try to bind to port 0 and let OS assign
 	listener, err := exec.Command("sh", "-c", "python3 -c 'import socket; s=socket.socket(); s.bind(0); print(s.getsockname()[1])'").Output()
 	if err != nil {
-		// Fallback to a common test port
+		// Fallback to a common test port (Python not available or command failed)
+		// nolint:errcheck // Intentional fallback
 		return 19999, nil
 	}
 
 	var port int
 	_, err = fmt.Sscanf(string(listener), "%d", &port)
 	if err != nil {
+		// nolint:errcheck // Intentional fallback on parse error
 		return 19999, nil
 	}
 	return port, nil

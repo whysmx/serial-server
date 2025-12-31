@@ -86,7 +86,7 @@ func TestLoadNonExistent(t *testing.T) {
 		t.Errorf("Expected no error for nonexistent file, got: %v", err)
 	}
 	if cfg == nil {
-		t.Error("Expected empty config, got nil")
+		t.Fatal("Expected empty config, got nil")
 	}
 	if len(cfg.Listeners) != 0 {
 		t.Errorf("Expected empty listeners list, got %d", len(cfg.Listeners))

@@ -2,11 +2,13 @@
 package frp
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // FRP Dashboard 配置
@@ -58,7 +60,10 @@ func NewClientWithConfig(baseURL, adminUser, adminPassword string) *Client {
 
 // getConfig retrieves the current FRPC configuration.
 func (c *Client) GetConfig() (string, error) {
-	req, err := http.NewRequest("GET", c.baseURL+"/api/config", nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/config", nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
@@ -84,7 +89,10 @@ func (c *Client) GetConfig() (string, error) {
 
 // putConfig uploads new FRPC configuration.
 func (c *Client) PutConfig(config string) error {
-	req, err := http.NewRequest("PUT", c.baseURL+"/api/config", strings.NewReader(config))
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "PUT", c.baseURL+"/api/config", strings.NewReader(config))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -107,7 +115,10 @@ func (c *Client) PutConfig(config string) error {
 
 // reload triggers FRPC to reload the configuration.
 func (c *Client) Reload() error {
-	req, err := http.NewRequest("GET", c.baseURL+"/api/reload", nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/reload", nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
