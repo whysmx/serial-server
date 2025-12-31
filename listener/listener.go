@@ -32,6 +32,17 @@ type Stats struct {
 
 // Listener represents a serial server listener.
 type Listener struct {
+	// Stats
+	stats Stats
+
+	// Synchronization
+	mu sync.RWMutex
+
+	// Client connections
+	clients        map[string]net.Conn
+	clientIndexMap map[string]string // addr -> index (e.g., "127.0.0.1:12345" -> "#1")
+
+	// Configuration fields
 	name          string
 	listenPort    int
 	serialPort    string
@@ -41,6 +52,7 @@ type Listener struct {
 	parity        string
 	displayFormat DisplayFormat
 	maxClients    int
+	clientCounter  uint64
 
 	// TCP listener
 	tcpListener net.Listener
@@ -51,21 +63,12 @@ type Listener struct {
 	// Write queue for multi-client serialization
 	writeQueue *WriteQueue
 
-	// Client connections
-	clients        map[string]net.Conn
-	clientIndexMap map[string]string // addr -> index (e.g., "127.0.0.1:12345" -> "#1")
-	clientCounter  uint64            // Counter for assigning client indices
-	mu             sync.RWMutex
-
 	// Data channels
 	rxChan chan []byte // Data received from serial
 
 	// Control channels
 	stopChan chan struct{}
 	doneChan chan struct{}
-
-	// Stats
-	stats Stats
 
 	// Callbacks
 	onData func(data []byte, direction string, clientID string)
@@ -352,23 +355,6 @@ func (l *Listener) serialReadLoop() {
 	}
 }
 
-// broadcastToClients sends data to all connected clients.
-func (l *Listener) broadcastToClients(data []byte) {
-	l.mu.RLock()
-	clients := make([]net.Conn, 0, len(l.clients))
-	for _, conn := range l.clients {
-		clients = append(clients, conn)
-	}
-	l.mu.RUnlock()
-
-	for _, conn := range clients {
-		_, err := conn.Write(data)
-		if err != nil {
-			log.Printf("[listener:%s] client write error: %v", l.name, err)
-		}
-	}
-}
-
 // SetOnData sets the data callback.
 func (l *Listener) SetOnData(fn func(data []byte, direction string, clientID string)) {
 	l.mu.Lock()
@@ -471,19 +457,24 @@ func FormatForDisplay(data []byte, format DisplayFormat) string {
 		}
 		return strings.Join(result, "\n")
 	default:
-		// Clean non-printable characters
-		var buf []byte
-		for _, b := range data {
-			if b >= 32 && b <= 126 {
-				buf = append(buf, b)
-			} else if b == 9 || b == 10 || b == 13 {
-				buf = append(buf, b)
-			} else {
-				buf = append(buf, '.')
-			}
-		}
-		return string(buf)
+		return cleanNonPrintable(data)
 	}
+}
+
+// cleanNonPrintable cleans non-printable characters from byte array.
+func cleanNonPrintable(data []byte) string {
+	var buf []byte
+	for _, b := range data {
+		switch {
+		case b >= 32 && b <= 126:
+			buf = append(buf, b)
+		case b == 9 || b == 10 || b == 13:
+			buf = append(buf, b)
+		default:
+			buf = append(buf, '.')
+		}
+	}
+	return string(buf)
 }
 
 // FormatForDisplayCompact formats data for display in compact mode (no line breaks).
@@ -497,17 +488,6 @@ func FormatForDisplayCompact(data []byte, format DisplayFormat) string {
 		}
 		return strings.Join(result, " ")
 	default:
-		// Clean non-printable characters
-		var buf []byte
-		for _, b := range data {
-			if b >= 32 && b <= 126 {
-				buf = append(buf, b)
-			} else if b == 9 || b == 10 || b == 13 {
-				buf = append(buf, b)
-			} else {
-				buf = append(buf, '.')
-			}
-		}
-		return string(buf)
+		return cleanNonPrintable(data)
 	}
 }

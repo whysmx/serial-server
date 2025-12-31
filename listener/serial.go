@@ -17,9 +17,9 @@ import (
 
 // Port represents a serial port connection.
 type Port struct {
+	mu     sync.RWMutex
 	config *serial.Config
 	port   io.ReadWriteCloser
-	mu     sync.RWMutex
 	name   string
 	baud   int
 }

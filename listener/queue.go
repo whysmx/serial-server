@@ -15,14 +15,14 @@ const (
 
 // cacheEntry represents a cached response with expiration time.
 type cacheEntry struct {
-	data     []byte
 	expireAt time.Time
+	data     []byte
 }
 
 // RequestCache handles caching of request-response pairs with dynamic TTL.
 type RequestCache struct {
-	cache map[uint64]*cacheEntry
 	mu    sync.RWMutex
+	cache map[uint64]*cacheEntry
 }
 
 // NewRequestCache creates a new request cache.
@@ -82,13 +82,13 @@ func (c *RequestCache) CleanupExpired() {
 
 // PendingRequest represents a request waiting for serial response.
 type PendingRequest struct {
-	ID         uint64 // Unique identifier for response matching
-	ClientID   string
-	DataHash   uint64
-	Request    []byte
-	ResponseCh chan []byte
 	Timestamp  time.Time // Time when request was enqueued
 	SentAt     time.Time // Time when request was actually sent to serial
+	Request    []byte
+	ClientID   string
+	ResponseCh chan []byte
+	ID         uint64 // Unique identifier for response matching
+	DataHash   uint64
 	done       atomic.Bool
 }
 
@@ -118,29 +118,24 @@ const (
 
 // WriteQueue serializes writes to serial port and matches responses.
 type WriteQueue struct {
-	cache   *RequestCache
-	pending []*PendingRequest
-	mu      sync.Mutex
-	serial  *Port
+	// Synchronization
+	mu sync.Mutex
 
-	// ID generator for request matching
-	nextReqID atomic.Uint64
+	// Large fields (24 bytes each)
+	respBuf   []byte
+	dropUntil time.Time
 
-	// Index to quickly find pending request by clientID
-	clientIndex map[string]int
-
-	// Inflight requests by data hash (main request currently being processed)
-	inflight map[uint64]*PendingRequest
-
-	// Waiting requests by data hash (for multi-client same-request handling)
-	waiting map[uint64][]*PendingRequest
-
-	// Response accumulation buffer
-	respBuf      []byte
+	// 8-byte fields
+	cache        *RequestCache
+	pending      []*PendingRequest
+	serial       *Port
+	nextReqID    atomic.Uint64
+	clientIndex  map[string]int
+	inflight     map[uint64]*PendingRequest
+	waiting      map[uint64][]*PendingRequest
 	respTimer    *time.Timer
-	currentReqID uint64       // ID of request currently waiting for response
-	respState    atomic.Int32 // State machine: idle -> sending -> waiting
-	dropUntil    time.Time    // Drop responses received before this time (for late response window)
+	currentReqID uint64
+	respState    atomic.Int32
 
 	// Flush loop control
 	stopFlushLoop     chan struct{}
@@ -441,7 +436,7 @@ func (q *WriteQueue) flushResponseLocked() {
 	if sendTime.IsZero() {
 		sendTime = req.Timestamp
 	}
-	rtt := time.Now().Sub(sendTime)
+	rtt := time.Since(sendTime)
 	if rtt < 0 {
 		rtt = 0
 	}
