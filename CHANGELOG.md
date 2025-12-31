@@ -2,6 +2,25 @@
 
 所有重要变更都会记录在此文件中。
 
+## [v1.1.1] - 2025-12-31
+
+### 🐛 Bug 修复
+- **Windows 终端显示修复** - 解决 Windows CMD/PowerShell 显示 ANSI 颜色代码乱码问题
+- **FRP 状态符号优化** - 将表情符号 ✅/❌ 改为 ASCII 字符 [√]/[×]，解决跨平台兼容性问题
+- **终端颜色智能检测** - 添加 `shouldUseColor()` 函数，自动检测终端类型并调整颜色输出
+  - Windows CMD/PowerShell: 自动禁用 ANSI 颜色
+  - Windows Terminal/ConEmu: 保持彩色输出
+  - Linux/macOS: 保持彩色输出
+
+### 🔧 改进
+- 新增颜色辅助函数 `getGreen()`, `getRed()`, `getReset()` 实现动态颜色控制
+- 所有颜色输出现在根据终端支持情况自适应
+
+### 📝 技术细节
+- 添加 runtime 包用于操作系统检测
+- 检测环境变量：NO_COLOR, TERM, WT_SESSION, ConEmuPID
+- Windows 特殊处理逻辑
+
 ## [v1.1.0] - 2025-12-31
 
 ### ✨ 新功能
