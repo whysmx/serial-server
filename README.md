@@ -139,40 +139,6 @@ serial-server.exe
 ./serial-server --version    # 显示版本
 ```
 
-## 配置说明
-
-### 配置文件格式（config.ini）
-
-```ini
-[device_1]
-listen_port = 9600           # TCP 监听端口（必填）
-serial_port = COM3           # 串口设备（必填）Windows: COM1-256, Linux: /dev/ttyUSB0
-baud_rate = 115200           # 波特率（默认 115200）
-data_bits = 8                # 数据位（默认 8）
-stop_bits = 1                # 停止位（默认 1）
-parity = N                   # 校验位 N/O/E（默认 N）
-display_format = HEX         # 显示格式 HEX/UTF8/GB2312（默认 UTF8）
-```
-
-### 支持的串口设备
-
-| 平台 | 串口路径示例 |
-|------|-------------|
-| **Windows** | COM1, COM2, ..., COM256 |
-| **Linux** | /dev/ttyUSB0, /dev/ttyACM0, /dev/ttyFIQ0 |
-| **macOS** | /dev/cu.usbserial-xxx, /dev/cu.usbmodem-xxx |
-
-### Linux COM-USB 映射（独有特性）
-
-Linux 下支持通过 COM 名称引用 USB 设备：
-
-```ini
-[device_1]
-serial_port = COM2           # 自动映射到 /dev/ttyUSB0
-```
-
-程序会自动扫描 `/dev` 下的符号链接建立映射关系。
-
 ## 使用场景
 
 ### 场景一：多客户端并发读取传感器
@@ -259,32 +225,6 @@ GET  http://localhost:7400/api/config  // 获取当前配置
 PUT  http://localhost:7400/api/config  // 上传新配置
 认证：Basic Auth (admin/admin)
 ```
-
-## 部署到远程设备
-
-### 手动部署
-
-```bash
-# 1. 下载对应平台的二进制
-wget https://github.com/whysmx/serial-server/releases/download/v1.19.1/serial-server-linux-arm64
-
-# 2. 上传到设备
-scp serial-server-linux-arm64 user@device:/home/forlinx/Downloads/serial-server
-
-# 3. SSH 登录设备运行
-ssh user@device
-cd /home/forlinx/Downloads
-chmod +x serial-server
-./serial-server --wizard
-```
-
-### 一键部署脚本
-
-```bash
-./scripts/deploy.sh v1.19.1
-```
-
-自动完成下载、上传、权限设置。
 
 ## 日志系统
 
