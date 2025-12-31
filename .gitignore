@@ -1,11 +1,16 @@
 # Binaries
 serial-server
-serial-server-arm
+serial-server-*
+*-test
+*-fixed
 
 # Logs
 *.log
-serial-server.log
 
 # IDE
 .idea/
 .vscode/
+
+# OS
+.DS_Store
+Thumbs.db
