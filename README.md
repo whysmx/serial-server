@@ -19,22 +19,24 @@ Serial-Server 不是普通的串口转发工具，它专为**工业场景**和**
 
 ```mermaid
 flowchart TB
-    subgraph Clients [多客户端连接]
+    subgraph TCPClients [TCP 客户端]
         C1[客户端 #1]
         C2[客户端 #2]
         C3[客户端 #3]
     end
 
-    subgraph Queue [智能队列系统]
-        Cache[(响应缓存<br/>5秒 TTL)]
-        Inflight[inflight 请求]
-        Waiting[waiting 请求]
-        Pending[FIFO 待处理队列]
-    end
+    subgraph Server [TCP 服务端 - Serial-Server]
+        subgraph Queue [智能队列系统]
+            Cache[(响应缓存<br/>5秒 TTL)]
+            Inflight[inflight 请求]
+            Waiting[waiting 请求]
+            Pending[FIFO 待处理队列]
+        end
 
-    subgraph Serial [串口通信层]
-        SPort[串口设备]
-        Buffer[帧缓冲区<br/>50ms 间隔检测]
+        subgraph Serial [串口通信层]
+            SPort[串口设备]
+            Buffer[帧缓冲区<br/>50ms 间隔检测]
+        end
     end
 
     C1 & C2 & C3 -->|TCP 连接| Queue
@@ -45,6 +47,7 @@ flowchart TB
     Buffer -->|匹配返回| Queue
     Queue -->|响应分发| C1 & C2 & C3
 
+    style Server fill:#e3f2fd
     style Queue fill:#e1f5ff
     style Cache fill:#fff4e1
     style Serial fill:#e8f5e9
@@ -54,28 +57,28 @@ flowchart TB
 
 ```mermaid
 sequenceDiagram
-    participant C1 as 客户端 #1
-    participant C2 as 客户端 #2
-    participant Q as 队列系统
-    participant S as 串口设备
+    participant C1 as TCP 客户端 #1
+    participant C2 as TCP 客户端 #2
+    participant S as TCP 服务端<br/>(Serial-Server)
+    participant D as 串口设备
 
-    C1->>Q: 发送命令 CMD_A
-    activate Q
-    Note over Q: 检查缓存 → 未命中
-
-    C2->>Q: 发送命令 CMD_A
-    Note over Q: 检查 inflight → 已存在<br/>加入 waiting 列表
-
-    Q->>S: 写入 CMD_A（仅一次）
+    C1->>S: 发送命令 CMD_A
     activate S
-    S-->>Q: 返回响应
+    Note over S: 检查缓存 → 未命中
+
+    C2->>S: 发送命令 CMD_A
+    Note over S: 检查 inflight → 已存在<br/>加入 waiting 列表
+
+    S->>D: 写入 CMD_A（仅一次）
+    activate D
+    D-->>S: 返回响应
+    deactivate D
+
+    Note over S: 唤醒所有 waiting 请求<br/>写入缓存（5秒 TTL）
+
+    S-->>C1: 返回响应
+    S-->>C2: 返回响应（来自缓存）
     deactivate S
-
-    Note over Q: 唤醒所有 waiting 请求<br/>写入缓存（5秒 TTL）
-
-    Q-->>C1: 返回响应
-    Q-->>C2: 返回响应（来自缓存）
-    deactivate Q
 ```
 
 **关键技术**：
