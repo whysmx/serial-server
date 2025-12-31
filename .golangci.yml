@@ -1,0 +1,95 @@
+run:
+  timeout: 10m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - gofmt
+    - govet
+    - revive
+    - staticcheck
+    - gosimple
+    - ineffassign
+    - unused
+    - errcheck
+    - gosec
+    - gocyclo
+    - dupl
+    - misspell
+    - goconst
+    - gocritic
+    - prealloc
+    - exportloopref
+    - nilerr
+    - noctx
+    - whitespace
+
+linters-settings:
+  govet:
+    enable-all: true
+    disable:
+      - shadow
+
+  gocyclo:
+    min-complexity: 15
+
+  dupl:
+    threshold: 100
+
+  goconst:
+    min-len: 2
+    min-occurrences: 3
+
+  misspell:
+    locale: US
+
+  revive:
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - goconst
+
+    - path: listener/
+      text: "G101"  # Ignore potential credentials hardcoded in listener tests
+
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-line: true

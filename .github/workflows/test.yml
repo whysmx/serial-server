@@ -7,6 +7,56 @@ on:
     branches: [ master, main ]
 
 jobs:
+  # Linting and static analysis
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Check go fmt
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "Go code is not formatted:"
+            gofmt -d .
+            exit 1
+          fi
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run goimports check
+        run: |
+          go install golang.org/x/tools/cmd/goimports@latest
+          if [ -n "$(goimports -l .)" ]; then
+            echo "Go imports need to be fixed:"
+            goimports -d .
+            exit 1
+          fi
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=10m
+
+      - name: Run GoSec security scanner
+        uses: securego/gosec@master
+        with:
+          args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
+
+      - name: Upload GoSec results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: gosec-results.sarif
+
+  # Unit tests with race detector
   test:
     runs-on: ubuntu-latest
 
@@ -25,8 +75,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y socat
 
-      - name: Run unit tests
-        run: go test -v -short ./...
+      - name: Run unit tests with race detector
+        run: go test -race -short ./...
 
       - name: Run configuration tests
         run: go test -v -run TestConfig ./...
@@ -42,19 +92,50 @@ jobs:
 
       - name: Run all tests with coverage
         run: |
-          go test -v -coverprofile=coverage.out ./...
+          go test -v -coverprofile=coverage.out -covermode=atomic ./...
           go tool cover -func=coverage.out
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Current coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 10" | bc -l) )); then
+            echo "⚠️  Coverage is below 10% (current: $COVERAGE%)"
+          else
+            echo "✅ Coverage threshold passed: $COVERAGE%"
+          fi
+
+      - name: Generate coverage HTML
+        run: go tool cover -html=coverage.out -o coverage.html
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           files: ./coverage.out
           fail_ci_if_error: false
+          flags: unittests
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage.out
+            coverage.html
 
       - name: Build binary
         run: |
           go build -v -o serial-server .
           ./serial-server --version
+
+      - name: Run benchmarks
+        run: go test -bench=. -benchmem -run=^$ ./... | tee benchmark.txt
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark.txt
 
   test-windows:
     runs-on: windows-latest
@@ -72,8 +153,8 @@ jobs:
         run: |
           go mod tidy
 
-      - name: Run unit tests
-        run: go test -v -short ./...
+      - name: Run unit tests with race detector
+        run: go test -race -short ./...
 
       - name: Run configuration tests
         run: go test -v -run TestConfig ./...
@@ -84,7 +165,132 @@ jobs:
       - name: Run queue tests
         run: go test -v -run "TestRequest|TestPending|TestCache" ./...
 
+      - name: Run all tests with coverage
+        run: |
+          go test -v -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -func=coverage.out
+
       - name: Build Windows binary
         run: |
           go build -v -o serial-server.exe .
           ./serial-server.exe --version
+
+      - name: Run benchmarks
+        run: go test -bench=. -benchmem -run=^$ ./...
+
+  # Multi-platform build test
+  build-multiplatform:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: ""
+          - goos: linux
+            goarch: arm64
+            suffix: ""
+          - goos: darwin
+            goarch: amd64
+            suffix: ""
+          - goos: darwin
+            goarch: arm64
+            suffix: ""
+          - goos: windows
+            goarch: amd64
+            suffix: ".exe"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Build for ${{ matrix.goos }}/${{ matrix.goarch }}
+        run: |
+          mkdir -p dist
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -v -o dist/serial-server${{ matrix.suffix }} .
+          ls -lh dist/
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: serial-server-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/serial-server${{ matrix.suffix }}
+
+  # Security scanning
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/golang@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  # Performance regression test
+  benchmark:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Run benchmarks
+        run: |
+          go test -bench=. -benchmem -run=^$ ./... | tee benchmark_new.txt
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: 'go'
+          output-file-path: benchmark_new.txt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          alert-threshold: '150%'
+          comment-on-alert: true
+          fail-on-alert: true
+          alert-comment-cc-users: '@whysmx'
+
+  # Fuzzing tests
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Run fuzz tests
+        run: |
+          go test -fuzz=FuzzParseConfig -fuzztime=30s ./... || true
+          go test -fuzz=FuzzFormatForDisplay -fuzztime=30s ./... || true
+          go test -fuzz=FuzzHash -fuzztime=30s ./... || true

@@ -370,3 +370,235 @@ func TestGetConfigMethods(t *testing.T) {
 		t.Errorf("Expected max clients 0 (default), got %d", l.GetMaxClients())
 	}
 }
+
+// TestContains tests the contains helper function
+func TestContains(t *testing.T) {
+	tests := []struct {
+		name     string
+		s        string
+		substr   string
+		expected bool
+	}{
+		{
+			name:     "substring exists",
+			s:        "hello world",
+			substr:   "world",
+			expected: true,
+		},
+		{
+			name:     "substring at start",
+			s:        "hello world",
+			substr:   "hello",
+			expected: true,
+		},
+		{
+			name:     "substring at end",
+			s:        "hello world",
+			substr:   "world",
+			expected: true,
+		},
+		{
+			name:     "substring does not exist",
+			s:        "hello world",
+			substr:   "goodbye",
+			expected: false,
+		},
+		{
+			name:     "empty substring",
+			s:        "hello world",
+			substr:   "",
+			expected: true, // empty string is always contained
+		},
+		{
+			name:     "empty string",
+			s:        "",
+			substr:   "test",
+			expected: false,
+		},
+		{
+			name:     "both empty",
+			s:        "",
+			substr:   "",
+			expected: true,
+		},
+		{
+			name:     "case sensitive",
+			s:        "Hello World",
+			substr:   "hello",
+			expected: false,
+		},
+		{
+			name:     "special characters",
+			s:        "use of closed network connection",
+			substr:   "closed",
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := contains(tt.s, tt.substr)
+			if result != tt.expected {
+				t.Errorf("contains(%q, %q) = %v, expected %v",
+					tt.s, tt.substr, result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestIsClosedError tests the isClosedError method
+func TestIsClosedError(t *testing.T) {
+	l := NewListener("test", 9999, "/dev/ttyUSB0", 115200, 8, 1, "N", FormatHEX)
+
+	tests := []struct {
+		name     string
+		msg      string
+		expected bool
+	}{
+		{
+			name:     "use of closed connection",
+			msg:      "use of closed network connection",
+			expected: true,
+		},
+		{
+			name:     "use of closed file",
+			msg:      "use of closed file",
+			expected: true,
+		},
+		{
+			name:     "connection reset by peer",
+			msg:      "connection reset by peer",
+			expected: true,
+		},
+		{
+			name:     "connection reset",
+			msg:      "read: connection reset",
+			expected: true,
+		},
+		{
+			name:     "normal error",
+			msg:      "some other error",
+			expected: false,
+		},
+		{
+			name:     "empty string",
+			msg:      "",
+			expected: false,
+		},
+		{
+			name:     "timeout error",
+			msg:      "i/o timeout",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := l.isClosedError(tt.msg)
+			if result != tt.expected {
+				t.Errorf("isClosedError(%q) = %v, expected %v",
+					tt.msg, result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestIsTemporaryError tests the isTemporaryError method
+func TestIsTemporaryError(t *testing.T) {
+	l := NewListener("test", 9999, "/dev/ttyUSB0", 115200, 8, 1, "N", FormatHEX)
+
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{
+			name:     "nil error",
+			err:      nil,
+			expected: false,
+		},
+		{
+			name:     "non-temporary error",
+			err:      &testError{msg: "some error", temp: false},
+			expected: false,
+		},
+		{
+			name:     "temporary error",
+			err:      &testError{msg: "temporary error", temp: true},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := l.isTemporaryError(tt.err)
+			if result != tt.expected {
+				t.Errorf("isTemporaryError(%v) = %v, expected %v",
+					tt.err, result, tt.expected)
+			}
+		})
+	}
+}
+
+// testError implements net.Error for testing
+type testError struct {
+	msg  string
+	temp bool
+}
+
+func (e *testError) Error() string   { return e.msg }
+func (e *testError) Timeout() bool   { return false }
+func (e *testError) Temporary() bool { return e.temp }
+
+// TestFormatForDisplayCompact tests the FormatForDisplayCompact function
+func TestFormatForDisplayCompact(t *testing.T) {
+	tests := []struct {
+		name     string
+		data     []byte
+		format   DisplayFormat
+		notEmpty bool
+	}{
+		{
+			name:     "HEX format with data",
+			data:     []byte{0x01, 0x02, 0x03},
+			format:   FormatHEX,
+			notEmpty: true,
+		},
+		{
+			name:     "UTF8 format with data",
+			data:     []byte("Hello"),
+			format:   FormatUTF8,
+			notEmpty: true,
+		},
+		{
+			name:     "GB2312 format with data",
+			data:     []byte{0xC4, 0xE3}, // "你" in GB2312
+			format:   FormatGB2312,
+			notEmpty: true,
+		},
+		{
+			name:     "empty data",
+			data:     []byte{},
+			format:   FormatHEX,
+			notEmpty: false,
+		},
+		{
+			name:     "nil data",
+			data:     nil,
+			format:   FormatHEX,
+			notEmpty: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FormatForDisplayCompact(tt.data, tt.format)
+			if tt.notEmpty && result == "" {
+				t.Errorf("FormatForDisplayCompact() returned empty string for %v", tt.data)
+			}
+			if !tt.notEmpty && result != "" {
+				t.Errorf("FormatForDisplayCompact() should return empty for nil/empty data, got %s", result)
+			}
+		})
+	}
+}
