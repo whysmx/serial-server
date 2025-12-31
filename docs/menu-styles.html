@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serial-Server 菜单风格演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Courier New', 'Monaco', 'Consolas', monospace;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #eee;
+            padding: 20px;
+            line-height: 1.8;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #fff;
+            font-size: 28px;
+            text-shadow: 0 0 20px rgba(79, 195, 247, 0.5);
+        }
+        h2 {
+            color: #4fc3f7;
+            margin: 30px 0 15px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 8px;
+            font-size: 20px;
+        }
+        h3 {
+            margin: 20px 0 10px;
+            font-size: 16px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .menu-box {
+            background: rgba(22, 33, 62, 0.9);
+            border: 2px solid #0f3460;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .menu-title {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+        .divider {
+            border-top: 1px dashed #444;
+            margin: 12px 0;
+        }
+        .config-summary {
+            margin: 10px 0;
+        }
+        .option {
+            margin: 6px 0;
+            padding: 6px 15px;
+        }
+        .option-num {
+            font-weight: bold;
+            display: inline-block;
+            width: 25px;
+        }
+        .input-prompt {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #333;
+        }
+        .port-list {
+            margin: 10px 0;
+            padding-left: 25px;
+        }
+        .port-item {
+            margin: 4px 0;
+        }
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 15px;
+            margin: 4px 0;
+            border-radius: 6px;
+        }
+        .two-col {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .two-col > div {
+            flex: 1;
+            min-width: 380px;
+        }
+        .three-col {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .three-col > div {
+            flex: 1;
+            min-width: 250px;
+        }
+        .emoji-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 10px 0;
+        }
+        .emoji-item {
+            background: rgba(255,255,255,0.05);
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .color-preview {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        /* ===== 风格1: 经典绿 ===== */
+        .style1 .menu-title { color: #4ade80; }
+        .style1 .option-num { color: #4ade80; }
+        .style1 .input-prompt { color: #4ade80; }
+        .style1 .port-item span:first-child { color: #4ade80; }
+
+        /* ===== 风格2: 霓虹粉 ===== */
+        .style2 {
+            border-color: #f472b6;
+            box-shadow: 0 0 15px rgba(244, 114, 182, 0.3);
+        }
+        .style2 .menu-title {
+            color: #f472b6;
+            text-shadow: 0 0 10px #f472b6;
+        }
+        .style2 .option-num { color: #c084fc; }
+        .style2 .input-prompt { color: #f472b6; }
+        .style2 .port-item span:first-child { color: #f472b6; }
+
+        /* ===== 风格3: 暗夜蓝 ===== */
+        .style3 { border-color: #60a5fa; }
+        .style3 .menu-title { color: #60a5fa; }
+        .style3 .option-num { color: #60a5fa; }
+        .style3 .input-prompt { color: #60a5fa; }
+        .style3 .port-item span:first-child { color: #60a5fa; }
+
+        /* ===== 风格4: 橙黑警示 ===== */
+        .style4 { border-color: #f97316; }
+        .style4 .menu-title { color: #f97316; }
+        .style4 .option-num { color: #fb923c; }
+        .style4 .input-prompt { color: #f97316; }
+        .style4 .port-item span:first-child { color: #fb923c; }
+
+        /* ===== 风格5: 青色科技 ===== */
+        .style5 {
+            border-color: #22d3ee;
+            box-shadow: 0 0 15px rgba(34, 211, 238, 0.3);
+        }
+        .style5 .menu-title {
+            color: #22d3ee;
+            text-shadow: 0 0 10px #22d3ee;
+        }
+        .style5 .option-num { color: #22d3ee; }
+        .style5 .input-prompt { color: #22d3ee; }
+        .style5 .port-item span:first-child { color: #22d3ee; }
+
+        /* ===== 风格6: 紫罗兰 ===== */
+        .style6 { border-color: #a78bfa; }
+        .style6 .menu-title { color: #a78bfa; }
+        .style6 .option-num { color: #c084fc; }
+        .style6 .input-prompt { color: #a78bfa; }
+        .style6 .port-item span:first-child { color: #a78bfa; }
+
+        /* ===== 风格7: 金色豪华 ===== */
+        .style7 {
+            border-color: #fbbf24;
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
+        }
+        .style7 .menu-title {
+            color: #fbbf24;
+            text-shadow: 0 0 10px #fbbf24;
+        }
+        .style7 .option-num { color: #fbbf24; }
+        .style7 .input-prompt { color: #fbbf24; }
+        .style7 .port-item span:first-child { color: #fbbf24; }
+
+        /* ===== 风格8: 极简白 ===== */
+        .style8 {
+            background: #0d1117;
+            border-color: #c9d1d9;
+        }
+        .style8 .menu-title { color: #c9d1d9; }
+        .style8 .option-num { color: #58a6ff; }
+        .style8 .input-prompt { color: #c9d1d9; }
+        .style8 .port-item span:first-child { color: #c9d1d9; }
+
+        /* ===== 风格9: 红色警示 ===== */
+        .style9 { border-color: #ef4444; }
+        .style9 .menu-title { color: #ef4444; }
+        .style9 .option-num { color: #ef4444; }
+        .style9 .input-prompt { color: #ef4444; }
+        .style9 .port-item span:first-child { color: #ef4444; }
+
+        /* ===== 风格10: 渐变彩虹 ===== */
+        .style10 {
+            border: 2px solid;
+            border-image: linear-gradient(45deg, #f472b6, #c084fc, #60a5fa, #4ade80, #fbbf24) 1;
+        }
+        .style10 .menu-title {
+            background: linear-gradient(45deg, #f472b6, #c084fc, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .style10 .option-num { color: #f472b6; }
+        .style10 .input-prompt { color: #4ade80; }
+        .style10 .port-item span:first-child { color: #60a5fa; }
+
+        /* 颜色类 */
+        .c-green { color: #4ade80; }
+        .c-blue { color: #60a5fa; }
+        .c-pink { color: #f472b6; }
+        .c-cyan { color: #22d3ee; }
+        .c-yellow { color: #fbbf24; }
+        .c-purple { color: #a78bfa; }
+        .c-red { color: #ef4444; }
+        .c-orange { color: #f97316; }
+        .c-gray { color: #9ca3af; }
+
+        /* 状态类 */
+        .status-yes { color: #4ade80; }
+        .status-no { color: #9ca3af; }
+        .status-err { color: #ef4444; }
+        .status-warn { color: #fbbf24; }
+        .status-info { color: #60a5fa; }
+
+        .tag {
+            display: inline-block;
+            background: rgba(255,255,255,0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Serial-Server 菜单风格演示</h1>
+
+    <!-- 风格总览 -->
+    <div class="section">
+        <h2>【风格总览】</h2>
+        <div class="three-col">
+            <div class="menu-box" style="text-align: center;">
+                <div class="tag">#1</div>
+                <div style="color: #4ade80; font-size: 24px;">■</div>
+                <div style="margin-top: 8px;">经典绿</div>
+                <div class="c-gray" style="font-size: 12px;">传统终端风格</div>
+            </div>
+            <div class="menu-box" style="text-align: center;">
+                <div class="tag">#2</div>
+                <div style="color: #f472b6; font-size: 24px;">■</div>
+                <div style="margin-top: 8px;">霓虹粉</div>
+                <div class="c-gray" style="font-size: 12px;">紫色霓虹灯效</div>
+            </div>
+            <div class="menu-box" style="text-align: center;">
+                <div class="tag">#3</div>
+                <div style="color: #60a5fa; font-size: 24px;">■</div>
+                <div style="margin-top: 8px;">暗夜蓝</div>
+                <div class="c-gray" style="font-size: 12px;">沉稳蓝色调</div>
+            </div>
+            <div class="menu-box" style="text-align: center;">
+                <div class="tag">#4</div>
+                <div style="color: #f97316; font-size: 24px;">■</div>
+                <div style="margin-top: 8px;">橙黑警示</div>
+                <div class="c-gray" style="font-size: 12px;">工业风橙色</div>
+            </div>
+            <div class="menu-box" style="text-align: center;">
+                <div class="tag">#5</div>
+                <div style="color: #22d3ee; font-size: 24px;">■</div>
+                <div style="margin-top: 8px;">青色科技</div>
+                <div class="c-gray" style="font-size: 12px;">赛博朋克风</div>
+            </div>
+            <div class="menu-box" style="text-align: center;">
+                <div class="tag">#6</div>
+                <div style="color: #a78bfa; font-size: 24px;">■</div>
+                <div style="margin-top: 8px;">紫罗兰</div>
+                <div class="c-gray" style="font-size: 12px;">神秘紫色调</div>
+            </div>
+            <div class="menu-box" style="text-align: center;">
+                <div class="tag">#7</div>
+                <div style="color: #fbbf24; font-size: 24px;">■</div>
+                <div style="margin-top: 8px;">金色豪华</div>
+                <div class="c-gray" style="font-size: 12px;">高端金色调</div>
+            </div>
+            <div class="menu-box" style="text-align: center;">
+                <div class="tag">#8</div>
+                <div style="color: #c9d1d9; font-size: 24px;">■</div>
+                <div style="margin-top: 8px;">极简白</div>
+                <div class="c-gray" style="font-size: 12px;">GitHub 风格</div>
+            </div>
+            <div class="menu-box" style="text-align: center;">
+                <div class="tag">#9</div>
+                <div style="color: #ef4444; font-size: 24px;">■</div>
+                <div style="margin-top: 8px;">红色警示</div>
+                <div class="c-gray" style="font-size: 12px;">警告风格</div>
+            </div>
+            <div class="menu-box" style="text-align: center;">
+                <div class="tag">#10</div>
+                <div style="background: linear-gradient(45deg, #f472b6, #c084fc, #60a5fa, #4ade80, #fbbf24);
+                            -webkit-background-clip: text;
+                            -webkit-text-fill-color: transparent;
+                            font-size: 24px;">■</div>
+                <div style="margin-top: 8px;">渐变彩虹</div>
+                <div class="c-gray" style="font-size: 12px;">彩色渐变</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主菜单对比 -->
+    <div class="section">
+        <h2>【主菜单风格对比】</h2>
+        <div class="two-col">
+            <!-- 风格1: 经典绿 -->
+            <div class="menu-box style1">
+                <div class="menu-title">═══════════════════════════════════════</div>
+                <div class="menu-title">Serial-Server 启动菜单</div>
+                <div class="divider"></div>
+                <div class="config-summary">
+                    配置摘要:<br>
+                    1. COM2:[9600 N 8 1 HEX] 端口[8001] frp[✅]<br>
+                    2. COM3:[9600 N 8 1 HEX] 端口[8002] frp[❌]
+                </div>
+                <div class="divider"></div>
+                <div class="option"><span class="option-num">1</span> - 直接启动程序</div>
+                <div class="option"><span class="option-num">2</span> - 添加新配置</div>
+                <div class="option"><span class="option-num">3</span> - 修改配置</div>
+                <div class="option"><span class="option-num">4</span> - 删除配置</div>
+                <div class="option"><span class="option-num">5</span> - FRP 管理</div>
+                <div class="option"><span class="option-num">0</span> - 退出</div>
+                <div class="input-prompt">请输入选项 [1/2/3/4/5/0]: _</div>
+            </div>
+
+            <!-- 风格5: 青色科技 -->
+            <div class="menu-box style5">
+                <div class="menu-title">╔═══════════════════════════════════════╗</div>
+                <div class="menu-title">║    Serial-Server 启动菜单      ║</div>
+                <div class="menu-title">╚═══════════════════════════════════════╝</div>
+                <div class="divider"></div>
+                <div class="config-summary">
+                    配置摘要:<br>
+                    1. COM2:[9600 N 8 1 HEX] 端口[8001] frp[✓]<br>
+                    2. COM3:[9600 N 8 1 HEX] 端口[8002] frp[✗]
+                </div>
+                <div class="divider"></div>
+                <div class="option"><span class="option-num">1</span> - 直接启动程序</div>
+                <div class="option"><span class="option-num">2</span> - 添加新配置</div>
+                <div class="option"><span class="option-num">3</span> - 修改配置</div>
+                <div class="option"><span class="option-num">4</span> - 删除配置</div>
+                <div class="option"><span class="option-num">5</span> - FRP 管理</div>
+                <div class="option"><span class="option-num">0</span> - 退出</div>
+                <div class="input-prompt">请输入选项 [1/2/3/4/5/0]: _</div>
+            </div>
+
+            <!-- 风格7: 金色豪华 -->
+            <div class="menu-box style7">
+                <div class="menu-title">═══════════════════════════════════════</div>
+                <div class="menu-title">★ Serial-Server 启动菜单 ★</div>
+                <div class="divider"></div>
+                <div class="config-summary">
+                    配置摘要:<br>
+                    1. COM2:[9600 N 8 1 HEX] 端口[8001] frp[✔]<br>
+                    2. COM3:[9600 N 8 1 HEX] 端口[8002] frp[✘]
+                </div>
+                <div class="divider"></div>
+                <div class="option"><span class="option-num">1</span> - 直接启动程序</div>
+                <div class="option"><span class="option-num">2</span> - 添加新配置</div>
+                <div class="option"><span class="option-num">3</span> - 修改配置</div>
+                <div class="option"><span class="option-num">4</span> - 删除配置</div>
+                <div class="option"><span class="option-num">5</span> - FRP 管理</div>
+                <div class="option"><span class="option-num">0</span> - 退出</div>
+                <div class="input-prompt">请输入选项 [1/2/3/4/5/0]: _</div>
+            </div>
+
+            <!-- 风格8: 极简白 -->
+            <div class="menu-box style8">
+                <div class="menu-title">─────────────────────────────────</div>
+                <div class="menu-title">Serial-Server</div>
+                <div class="divider"></div>
+                <div class="config-summary">
+                    配置摘要:<br>
+                    > COM2:[9600 N 8 1 HEX] 端口[8001] frp:[yes]<br>
+                    > COM3:[9600 N 8 1 HEX] 端口[8002] frp:[no]
+                </div>
+                <div class="divider"></div>
+                <div class="option"><span class="option-num">1</span> 直接启动程序</div>
+                <div class="option"><span class="option-num">2</span> 添加新配置</div>
+                <div class="option"><span class="option-num">3</span> 修改配置</div>
+                <div class="option"><span class="option-num">4</span> 删除配置</div>
+                <div class="option"><span class="option-num">5</span> FRP 管理</div>
+                <div class="option"><span class="option-num">0</span> 退出</div>
+                <div class="input-prompt">> _</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 串口列表风格 -->
+    <div class="section">
+        <h2>【串口列表 - 已配置标记】</h2>
+        <div class="three-col">
+            <div class="menu-box">
+                <div class="c-green">可用串口:</div>
+                <div class="port-list">
+                    <div class="port-item"><span class="c-green">1. COM2</span> ✅ 已配置</div>
+                    <div class="port-item"><span class="c-green">2. COM3</span> ✅ 已配置</div>
+                    <div class="port-item"><span class="c-blue">3. USB0</span></div>
+                    <div class="port-item"><span class="c-blue">4. USB1</span></div>
+                </div>
+                <div class="input-prompt c-green">选择串口 (1-4, q 退出): _</div>
+            </div>
+            <div class="menu-box">
+                <div class="c-pink">可用串口:</div>
+                <div class="port-list">
+                    <div class="port-item"><span class="c-pink">1. COM2</span> 🎯 已配置</div>
+                    <div class="port-item"><span class="c-pink">2. COM3</span> 🎯 已配置</div>
+                    <div class="port-item"><span class="c-pink">3. USB0</span></div>
+                    <div class="port-item"><span class="c-pink">4. USB1</span></div>
+                </div>
+                <div class="input-prompt c-pink">选择串口 (1-4, q 退出): _</div>
+            </div>
+            <div class="menu-box">
+                <div class="c-cyan">可用串口:</div>
+                <div class="port-list">
+                    <div class="port-item"><span class="c-cyan">1. COM2</span> [已使用]</div>
+                    <div class="port-item"><span class="c-cyan">2. COM3</span> [已使用]</div>
+                    <div class="port-item"><span class="c-cyan">3. USB0</span></div>
+                    <div class="port-item"><span class="c-cyan">4. USB1</span></div>
+                </div>
+                <div class="input-prompt c-cyan">选择串口 (1-4, q 退出): _</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FRP状态风格 -->
+    <div class="section">
+        <h2>【FRP 状态显示】</h2>
+        <div class="three-col">
+            <div class="menu-box">
+                <h3 style="color: #4ade80; margin-bottom: 10px;">方案 A: 纯 Emoji</h3>
+                <div class="status-row" style="background: rgba(74, 222, 128, 0.1);">
+                    <span>COM2:8001</span>
+                    <span class="status-yes">✅ 已添加</span>
+                </div>
+                <div class="status-row" style="background: rgba(156, 163, 175, 0.1);">
+                    <span>COM3:8002</span>
+                    <span class="status-no">❌ 未添加</span>
+                </div>
+            </div>
+            <div class="menu-box">
+                <h3 style="color: #22d3ee; margin-bottom: 10px;">方案 B: 连接符号</h3>
+                <div class="status-row" style="background: rgba(34, 211, 238, 0.1);">
+                    <span>COM2:8001</span>
+                    <span class="status-yes">🔗 已连接</span>
+                </div>
+                <div class="status-row" style="background: rgba(156, 163, 175, 0.1);">
+                    <span>COM3:8002</span>
+                    <span class="status-no">🔓 未连接</span>
+                </div>
+            </div>
+            <div class="menu-box">
+                <h3 style="color: #f472b6; margin-bottom: 10px;">方案 C: 文字状态</h3>
+                <div class="status-row" style="background: rgba(244, 114, 182, 0.1);">
+                    <span>COM2:8001</span>
+                    <span class="status-yes">ONLINE</span>
+                </div>
+                <div class="status-row" style="background: rgba(156, 163, 175, 0.1);">
+                    <span>COM3:8002</span>
+                    <span class="status-no">OFFLINE</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emoji 备选库 -->
+    <div class="section">
+        <h2>【Emoji 备选库】</h2>
+
+        <h3>已配置状态 (单选):</h3>
+        <div class="emoji-row">
+            <div class="emoji-item">✅ <span class="c-green">已配置 (推荐1)</span></div>
+            <div class="emoji-item">🎯 <span class="c-green">已配置 (推荐2)</span></div>
+            <div class="emoji-item">⚠️ <span class="c-yellow">已配置</span></div>
+            <div class="emoji-item">✓ <span class="c-green">已配置</span></div>
+            <div class="emoji-item">✔ <span class="c-green">已配置</span></div>
+            <div class="emoji-item">☑ <span class="c-green">已配置</span></div>
+            <div class="emoji-item">🔒 <span class="c-cyan">已锁定</span></div>
+            <div class="emoji-item">🔗 <span class="c-cyan">已连接</span></div>
+        </div>
+
+        <h3>未配置状态 (单选):</h3>
+        <div class="emoji-row">
+            <div class="emoji-item">❌ <span class="c-red">未配置 (推荐1)</span></div>
+            <div class="emoji-item">✗ <span class="c-red">未配置 (推荐2)</span></div>
+            <div class="emoji-item">✖ <span class="c-red">未配置</span></div>
+            <div class="emoji-item">☓ <span class="c-red">未配置</span></div>
+            <div class="emoji-item">🔓 <span class="c-cyan">未锁定</span></div>
+            <div class="emoji-item">⭕ <span class="c-red">未配置</span></div>
+        </div>
+
+        <h3>组合状态 - FRP (二选一):</h3>
+        <div class="emoji-row">
+            <div class="emoji-item">✅/❌ <span class="c-green">经典组合</span></div>
+            <div class="emoji-item">🔗/🔓 <span class="c-cyan">连接组合</span></div>
+            <div class="emoji-item">ON/OFF <span class="c-gray">文字组合</span></div>
+            <div class="emoji-item">YES/NO <span class="c-gray">英文组合</span></div>
+            <div class="emoji-item">是/否 <span class="c-gray">中文组合</span></div>
+            <div class="emoji-item">🌐/💤 <span class="c-blue">网络组合</span></div>
+            <div class="emoji-item">🟢/⚪ <span class="c-green">圆点组合</span></div>
+        </div>
+    </div>
+
+    <!-- 错误提示风格 -->
+    <div class="section">
+        <h2>【错误/提示信息】</h2>
+        <div class="two-col">
+            <div class="menu-box">
+                <h3 style="color: #ef4444; margin-bottom: 10px;">错误提示:</h3>
+                <div style="color: #ef4444;">❌ 错误：串口 COM2 已被其他配置使用</div>
+                <br>
+                <div style="color: #fbbf24;">⚠️ 提示：请选择其他串口</div>
+                <br>
+                <div style="color: #4ade80;">✅ 成功：配置已保存</div>
+                <br>
+                <div style="color: #60a5fa;">ℹ️ 信息：未检测到配置</div>
+            </div>
+            <div class="menu-box">
+                <h3 style="color: #c084fc; margin-bottom: 10px;">标签风格:</h3>
+                <div style="color: #ef4444;">[ERROR] 串口 COM2 已被使用</div>
+                <br>
+                <div style="color: #fbbf24;">[WARN] 请选择其他串口</div>
+                <br>
+                <div style="color: #4ade80;">[OK] 配置已保存</div>
+                <br>
+                <div style="color: #60a5fa;">[INFO] 未检测到配置</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 推荐组合 -->
+    <div class="section">
+        <h2>【推荐组合】</h2>
+        <div class="menu-box" style="border-color: #4ade80;">
+            <h3 class="c-green" style="margin-bottom: 15px;">组合 A (经典实用)</h3>
+            <div class="two-col">
+                <div>
+                    <div style="margin: 5px 0;">主色调: <span class="c-green">绿色 #4ade80</span></div>
+                    <div style="margin: 5px 0;">已配置: <span class="c-green">✅</span></div>
+                    <div style="margin: 5px 0;">未配置: <span class="c-gray">❌</span></div>
+                    <div style="margin: 5px 0;">FRP: <span class="c-green">✅</span> / <span class="c-gray">❌</span></div>
+                </div>
+                <div>
+                    <div style="margin: 5px 0;">边框: <span class="c-green">绿色</span></div>
+                    <div style="margin: 5px 0;">标题: <span class="c-green">绿色</span></div>
+                    <div style="margin: 5px 0;">选项号: <span class="c-green">绿色</span></div>
+                    <div style="margin: 5px 0;">提示: <span class="c-green">绿色</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-box" style="border-color: #22d3ee;">
+            <h3 class="c-cyan" style="margin-bottom: 15px;">组合 B (科技感)</h3>
+            <div class="two-col">
+                <div>
+                    <div style="margin: 5px 0;">主色调: <span class="c-cyan">青色 #22d3ee</span></div>
+                    <div style="margin: 5px 0;">已配置: <span class="c-cyan">🔗</span></div>
+                    <div style="margin: 5px 0;">未配置: <span class="c-gray">🔓</span></div>
+                    <div style="margin: 5px 0;">FRP: <span class="c-cyan">🔗</span> / <span class="c-gray">🔓</span></div>
+                </div>
+                <div>
+                    <div style="margin: 5px 0;">边框: <span class="c-cyan">青色 (发光)</span></div>
+                    <div style="margin: 5px 0;">标题: <span class="c-cyan">青色 (发光)</span></div>
+                    <div style="margin: 5px 0;">选项号: <span class="c-cyan">青色</span></div>
+                    <div style="margin: 5px 0;">提示: <span class="c-cyan">青色</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-box" style="border-color: #f472b6;">
+            <h3 class="c-pink" style="margin-bottom: 15px;">组合 C (霓虹风)</h3>
+            <div class="two-col">
+                <div>
+                    <div style="margin: 5px 0;">主色调: <span class="c-pink">粉色 #f472b6</span></div>
+                    <div style="margin: 5px 0;">已配置: <span class="c-pink">🎯</span></div>
+                    <div style="margin: 5px 0;">未配置: <span class="c-gray">❌</span></div>
+                    <div style="margin: 5px 0;">FRP: <span class="c-pink">🎯</span> / <span class="c-gray">❌</span></div>
+                </div>
+                <div>
+                    <div style="margin: 5px 0;">边框: <span class="c-pink">粉色 (发光)</span></div>
+                    <div style="margin: 5px 0;">标题: <span class="c-pink">粉色 (发光)</span></div>
+                    <div style="margin: 5px 0;">选项号: <span class="c-purple">紫色</span></div>
+                    <div style="margin: 5px 0;">提示: <span class="c-pink">粉色</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 投票区 -->
+    <div class="section">
+        <h2>【请选择你喜欢的风格】</h2>
+        <div class="menu-box" style="text-align: center; padding: 30px;">
+            <p style="margin-bottom: 20px; color: #9ca3af;">请告诉我你的选择 (用编号回复)</p>
+            <p style="margin-bottom: 10px;"><strong>主风格 (1-10)</strong>: _</p>
+            <p style="margin-bottom: 10px;"><strong>已配置 emoji</strong>: _</p>
+            <p style="margin-bottom: 10px;"><strong>未配置 emoji</strong>: _</p>
+            <p style="margin-bottom: 10px;"><strong>FRP 组合</strong>: _</p>
+            <p style="margin-top: 20px; color: #4ade80;">例如: 1 ✅ ❌ ✅/❌</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Binaries
+serial-server
+serial-server-arm
+
+# Logs
+*.log
+serial-server.log
+
+# IDE
+.idea/
+.vscode/
