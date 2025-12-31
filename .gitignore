@@ -1,0 +1,47 @@
+# Binaries
+serial-server
+serial-server-*
+serial-server.exe
+*-test
+*-fixed
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test coverage
+*.out
+coverage.out
+coverage.html
+*.coverprofile
+
+# Config
+config.ini
+
+# Docs (临时文件)
+docs/menu-styles.html
+
+# Local development
+scripts/
+.claude/
+CLAUDE.md
+.claude/
+
+# Logs
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.bak
+
+# Go specific
+vendor/
+
