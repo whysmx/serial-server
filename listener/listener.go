@@ -195,10 +195,12 @@ func (l *Listener) acceptLoop() {
 	}
 }
 
-// isTemporaryError checks if the error is temporary.
+// isTemporaryError checks if the error is temporary (timeout).
 func (l *Listener) isTemporaryError(err error) bool {
-	netErr, ok := err.(net.Error)
-	return ok && netErr.Temporary()
+	if netErr, ok := err.(net.Error); ok {
+		return netErr.Timeout()
+	}
+	return false
 }
 
 // handleNewConnection handles a new TCP connection.
@@ -250,7 +252,7 @@ func (l *Listener) handleClient(conn net.Conn, addr string) {
 		default:
 		}
 
-		conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+		_ = conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 
 		n, err := conn.Read(buf)
 		if err != nil {
@@ -285,7 +287,7 @@ func (l *Listener) handleClient(conn net.Conn, addr string) {
 				resp, ok := <-respCh
 				if ok && len(resp) > 0 {
 					// Send response back to this client only
-					conn.Write(resp)
+					_, _ = conn.Write(resp)
 
 					atomic.AddUint64(&l.stats.RxBytes, uint64(len(resp)))
 					atomic.AddUint64(&l.stats.RxPackets, 1)

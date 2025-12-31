@@ -187,6 +187,7 @@ func (c *Client) FindFirstSTCPProxy() (proxyName string, localIP string, localPo
 			sectionName := strings.Trim(line, "[]")
 			if sectionName == proxyName {
 				// 解析这个 section 下的内容
+				//nolint:gocritic // Complex menu logic - if-else chain is appropriate
 				for _, l := range lines[i+1:] {
 					l = strings.TrimSpace(l)
 					if l == "" || strings.HasPrefix(l, "[") {
@@ -195,7 +196,7 @@ func (c *Client) FindFirstSTCPProxy() (proxyName string, localIP string, localPo
 					if strings.HasPrefix(l, "local_ip = ") {
 						localIP = strings.TrimPrefix(l, "local_ip = ")
 					} else if strings.HasPrefix(l, "local_port = ") {
-						fmt.Sscanf(l, "local_port = %d", &localPort)
+						_, _ = fmt.Sscanf(l, "local_port = %d", &localPort)
 					} else if strings.HasPrefix(l, "sk = ") {
 						sk = strings.TrimPrefix(l, "sk = ")
 					} else if strings.HasPrefix(l, "use_encryption = ") {
@@ -345,7 +346,7 @@ func (c *Client) GetAllSerialServerProxies() ([]string, map[string]int, error) {
 		// 解析端口号
 		if inSerialServerSection && strings.HasPrefix(line, "local_port = ") {
 			var port int
-			fmt.Sscanf(line, "local_port = %d", &port)
+			_, _ = fmt.Sscanf(line, "local_port = %d", &port)
 			if currentName != "" && port > 0 {
 				proxyNames = append(proxyNames, currentName)
 				proxyPorts[currentName] = port
@@ -364,7 +365,7 @@ func (c *Client) RemoveSerialServerProxy(proxyName string) error {
 	}
 
 	lines := strings.Split(config, "\n")
-	var newLines []string
+	newLines := make([]string, 0, len(lines))
 	inSerialServerSection := false
 	skipUntilNextSection := false
 

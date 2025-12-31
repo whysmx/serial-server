@@ -81,11 +81,8 @@ func TestWriteQueueCreation(t *testing.T) {
 // TestStatsStructure tests stats structure
 func TestStatsStructure(t *testing.T) {
 	stats := &Stats{
-		TxBytes:   100,
-		RxBytes:   200,
-		TxPackets: 5,
-		RxPackets: 3,
-		Clients:   2,
+		TxBytes: 100,
+		RxBytes: 200,
 	}
 
 	if stats.TxBytes != 100 {

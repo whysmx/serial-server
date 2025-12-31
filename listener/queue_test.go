@@ -226,6 +226,7 @@ func TestCacheConcurrency(t *testing.T) {
 	// Start multiple goroutines accessing cache
 	for i := 0; i < 10; i++ {
 		go func(idx int) {
+			//nolint:gosec // G115 - Test code with controlled small integer values
 			hash := uint64(idx)
 			data := []byte{byte(idx)}
 

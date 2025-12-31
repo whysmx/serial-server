@@ -113,7 +113,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "  • 使用 --wizard 参数手动配置串口参数")
 			fmt.Fprintln(os.Stderr, "")
 			fmt.Fprintln(os.Stderr, "按回车键退出...")
-			fmt.Scanln(new(string))
+			_, _ = fmt.Scanln(new(string))
 			os.Exit(1)
 		}
 		log.Fatalf("加载配置失败: %v", err)
@@ -149,7 +149,7 @@ func main() {
 				fmt.Fprintln(os.Stderr, "  • 使用 --list 参数查看可用串口")
 				fmt.Fprintln(os.Stderr, "")
 				fmt.Fprintln(os.Stderr, "按回车键退出...")
-				fmt.Scanln(new(string))
+				_, _ = fmt.Scanln(new(string))
 				os.Exit(1)
 			}
 			log.Fatalf("配置向导失败: %v", err)
@@ -180,7 +180,7 @@ showMenu:
 		fmt.Fprintf(os.Stderr, "\n%s请输入选项 [1/2/3/4/5/0]: %s", colorGreen, colorReset)
 
 		var choice string
-		fmt.Scanln(&choice)
+		_, _ = fmt.Scanln(&choice)
 		choice = strings.ToLower(strings.TrimSpace(choice))
 
 		fmt.Fprintln(os.Stderr, "")
@@ -210,7 +210,7 @@ showMenu:
 					fmt.Fprintln(os.Stderr, "  • 使用 --list 参数查看可用串口")
 					fmt.Fprintln(os.Stderr, "")
 					fmt.Fprintln(os.Stderr, "按回车键返回主菜单...")
-					fmt.Scanln(new(string))
+					_, _ = fmt.Scanln(new(string))
 					// 返回主菜单重新显示
 					goto showMenu
 				}
@@ -298,9 +298,10 @@ showMenu:
 
 			// 等待用户输入
 			var input string
-			fmt.Scanln(&input)
+			_, _ = fmt.Scanln(&input)
 			choice := strings.ToLower(strings.TrimSpace(input))
 
+			//nolint:gocritic // Complex menu logic - if-else chain is appropriate
 			if choice == "1" || choice == "m" {
 				// 交互式修改配置
 				fmt.Fprintln(os.Stderr)
@@ -320,7 +321,7 @@ showMenu:
 					} else {
 						fmt.Fprintln(os.Stderr, "\n⚠️  未找到可用的编辑器 (nano/vi)")
 						fmt.Fprintln(os.Stderr, "请手动编辑配置文件后按回车继续...")
-						fmt.Scanln(&input)
+						_, _ = fmt.Scanln(&input)
 					}
 				}
 
@@ -345,14 +346,14 @@ showMenu:
 					fmt.Fprintln(os.Stderr, "请检查配置文件格式是否正确")
 					fmt.Fprint(os.Stderr, "按回车键重试，或按 Ctrl+C 退出... ")
 					var retryInput string
-					fmt.Scanln(&retryInput)
+					_, _ = fmt.Scanln(&retryInput)
 					continue
 				}
 				if len(cfg.Listeners) == 0 {
 					fmt.Fprintln(os.Stderr, "⚠️  配置文件中没有有效的监听器配置")
 					fmt.Fprint(os.Stderr, "按回车键重试，或按 Ctrl+C 退出... ")
 					var retryInput string
-					fmt.Scanln(&retryInput)
+					_, _ = fmt.Scanln(&retryInput)
 					continue
 				}
 				fmt.Fprintln(os.Stderr, "✓ 配置已重新加载")
@@ -384,7 +385,7 @@ func modifyConfigInteractively(cfg *config.Config, configPath string) error {
 		// 选择要编辑的监听器
 		fmt.Fprintf(os.Stderr, "选择要编辑的监听器 (1-%d): ", len(cfg.Listeners))
 		var selection int
-		fmt.Scanln(&selection)
+		_, _ = fmt.Scanln(&selection)
 		if selection < 1 || selection > len(cfg.Listeners) {
 			return fmt.Errorf("无效的选择")
 		}
@@ -407,7 +408,7 @@ func modifyConfigInteractively(cfg *config.Config, configPath string) error {
 	// 询问要修改哪项
 	fmt.Fprint(os.Stderr, "请输入要修改的项编号 (1-6，直接回车跳过): ")
 	var choice string
-	fmt.Scanln(&choice)
+	_, _ = fmt.Scanln(&choice)
 
 	choice = strings.TrimSpace(choice)
 	if choice == "" {
@@ -444,7 +445,7 @@ func modifyConfigInteractively(cfg *config.Config, configPath string) error {
 		for {
 			fmt.Fprintf(os.Stderr, "选择串口 (1-%d): ", len(ports))
 			var selection int
-			fmt.Scanln(&selection)
+			_, _ = fmt.Scanln(&selection)
 			if selection < 1 || selection > len(ports) {
 				return fmt.Errorf("无效的选择")
 			}
@@ -468,7 +469,7 @@ func modifyConfigInteractively(cfg *config.Config, configPath string) error {
 	case "2":
 		fmt.Fprint(os.Stderr, "新的监听端口: ")
 		var newVal int
-		fmt.Scanln(&newVal)
+		_, _ = fmt.Scanln(&newVal)
 		if newVal > 0 && newVal <= 65535 {
 			cfg.Listeners[idx].ListenPort = newVal
 		} else {
@@ -477,7 +478,7 @@ func modifyConfigInteractively(cfg *config.Config, configPath string) error {
 	case "3":
 		fmt.Fprint(os.Stderr, "新的波特率: ")
 		var newVal int
-		fmt.Scanln(&newVal)
+		_, _ = fmt.Scanln(&newVal)
 		if newVal > 0 {
 			cfg.Listeners[idx].BaudRate = newVal
 		}
@@ -488,7 +489,7 @@ func modifyConfigInteractively(cfg *config.Config, configPath string) error {
 		fmt.Fprintln(os.Stderr, "  E - 偶校验 (Even)")
 		fmt.Fprint(os.Stderr, "选择 [N/O/E]: ")
 		var newVal string
-		fmt.Scanln(&newVal)
+		_, _ = fmt.Scanln(&newVal)
 		newVal = strings.ToUpper(strings.TrimSpace(newVal))
 		if newVal == "N" || newVal == "O" || newVal == "E" {
 			cfg.Listeners[idx].Parity = newVal
@@ -498,7 +499,7 @@ func modifyConfigInteractively(cfg *config.Config, configPath string) error {
 	case "5":
 		fmt.Fprint(os.Stderr, "新的数据位 (5-8): ")
 		var newVal int
-		fmt.Scanln(&newVal)
+		_, _ = fmt.Scanln(&newVal)
 		if newVal >= 5 && newVal <= 8 {
 			cfg.Listeners[idx].DataBits = newVal
 		} else {
@@ -507,7 +508,7 @@ func modifyConfigInteractively(cfg *config.Config, configPath string) error {
 	case "6":
 		fmt.Fprint(os.Stderr, "新的停止位 (1-2): ")
 		var newVal int
-		fmt.Scanln(&newVal)
+		_, _ = fmt.Scanln(&newVal)
 		if newVal == 1 || newVal == 2 {
 			cfg.Listeners[idx].StopBits = newVal
 		} else {
@@ -852,7 +853,7 @@ func deleteConfigInteractively(cfg *config.Config, configPath string) error {
 
 	fmt.Fprintf(os.Stderr, "请输入要删除的配置编号 (1-%d): ", len(cfg.Listeners))
 	var choice string
-	fmt.Scanln(&choice)
+	_, _ = fmt.Scanln(&choice)
 
 	choice = strings.TrimSpace(choice)
 	if choice == "" {
@@ -869,7 +870,7 @@ func deleteConfigInteractively(cfg *config.Config, configPath string) error {
 	fmt.Fprintf(os.Stderr, "\n确认删除配置: %s - %s (:%d)? [y/n]: ",
 		deletedCfg.Name, deletedCfg.SerialPort, deletedCfg.ListenPort)
 	var confirm string
-	fmt.Scanln(&confirm)
+	_, _ = fmt.Scanln(&confirm)
 	if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
 		return fmt.Errorf("已取消删除")
 	}
@@ -902,7 +903,7 @@ func runFRPMenu() {
 		fmt.Fprintf(os.Stderr, "\n%s请输入选项 [1/2/3/0]: %s", colorGreen, colorReset)
 
 		var choice string
-		fmt.Scanln(&choice)
+		_, _ = fmt.Scanln(&choice)
 		choice = strings.ToLower(strings.TrimSpace(choice))
 		fmt.Fprintln(os.Stderr, "")
 
@@ -943,7 +944,7 @@ func frpAddProxy() {
 	fmt.Fprint(os.Stderr, "\n请选择要添加代理的监听器: ")
 
 	var choice string
-	fmt.Scanln(&choice)
+	_, _ = fmt.Scanln(&choice)
 	choice = strings.TrimSpace(choice)
 
 	idx, err := strconv.Atoi(choice)
@@ -1007,7 +1008,7 @@ func frpCleanupProxies() {
 
 	fmt.Fprint(os.Stderr, "确认清理? (输入 y 确认，其他取消): ")
 	var confirm string
-	fmt.Scanln(&confirm)
+	_, _ = fmt.Scanln(&confirm)
 	if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
 		fmt.Fprintln(os.Stderr, "已取消")
 		return
@@ -1042,14 +1043,12 @@ func removeSections(config string, sectionsToRemove []string) string {
 	currentSection := ""
 
 	lines := strings.Split(config, "\n")
+	//nolint:gocritic // Complex menu logic - if-else chain is appropriate
 	for _, line := range lines {
 		lineStr := strings.TrimSpace(line)
 
 		if strings.HasPrefix(lineStr, "[") && strings.HasSuffix(lineStr, "]") {
 			// 切换 section
-			if inSectionToRemove {
-				inSectionToRemove = false
-			}
 			currentSection = strings.Trim(lineStr, "[]")
 			inSectionToRemove = sectionSet[strings.ToLower(currentSection)]
 
@@ -1083,7 +1082,7 @@ func listSerialPorts() {
 }
 
 func scanSerialPorts() []wizard.PortInfo {
-	var ports []wizard.PortInfo
+	ports := make([]wizard.PortInfo, 0, 10)
 
 	// 扫描可用串口
 	availablePorts := listener.ScanAvailablePorts()

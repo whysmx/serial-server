@@ -326,7 +326,7 @@ func (w *Wizard) configureSerialListener(port string, num int) *config.ListenerC
 
 // scanPorts scans for available serial ports.
 func (w *Wizard) scanPorts() []PortInfo {
-	var ports []PortInfo
+	ports := make([]PortInfo, 0, 10)
 
 	// 使用 serialhelper 扫描可用串口
 	availablePorts := ScanAvailablePorts()
