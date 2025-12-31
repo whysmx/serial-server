@@ -1,3 +1,5 @@
+//go:build !windows
+
 // Package testing provides test utilities for serial-server
 package testing
 
