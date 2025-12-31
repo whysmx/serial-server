@@ -2,6 +2,29 @@
 
 所有重要变更都会记录在此文件中。
 
+## [v1.20.0] - 2025-12-31
+
+### ✨ 新功能
+- **FRP 代理命名优化** - 改进代理名称生成逻辑，基于现有模板替换端口号，确保命名风格一致
+
+### 🐛 Bug 修复
+- 修正 FRP 代理名称生成逻辑（基于现有模板替换端口号，而不是生成新名称）
+- 修复所有 golangci-lint 错误（fieldalignment, time.Since, if-else chains）
+- 修复 go fmt 格式问题
+- 修复 Windows 测试 shell 兼容性（使用 bash 替代 PowerShell）
+- 修复 golangci-lint 配置错误（移除不支持的 uniq-by-line 选项）
+
+### 📝 文档
+- 更新 FRP 代理命名规则说明，阐明基于模板的生成逻辑
+- 更新智能添加代理的流程说明
+
+### 🔧 改进
+- **代码质量** - 通过 golangci-lint 所有检查，优化结构体字段对齐
+- 使用 time.Since 替代 time.Now().Sub（更符合 Go 惯用法）
+- 使用 switch 语句替代 if-else 链（提高代码可读性）
+
+---
+
 ## [v1.19.1] - 2025-12-31
 
 ### 🐛 Bug 修复
