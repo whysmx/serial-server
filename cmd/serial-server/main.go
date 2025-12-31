@@ -1189,7 +1189,7 @@ func ScanAvailablePorts() []string {
 // getGreen 返回绿色代码（如果支持颜色）
 func getGreen() string {
 	if useColor {
-		return getGreen()
+		return colorGreen
 	}
 	return ""
 }
@@ -1197,7 +1197,7 @@ func getGreen() string {
 // getRed 返回红色代码（如果支持颜色）
 func getRed() string {
 	if useColor {
-		return getRed()
+		return colorRed
 	}
 	return ""
 }
@@ -1205,7 +1205,7 @@ func getRed() string {
 // getReset 返回重置代码（如果支持颜色）
 func getReset() string {
 	if useColor {
-		return getReset()
+		return colorReset
 	}
 	return ""
 }
