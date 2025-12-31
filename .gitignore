@@ -4,6 +4,9 @@ serial-server-*
 *-test
 *-fixed
 
+# Config
+config.ini
+
 # Logs
 *.log
 
