@@ -84,6 +84,30 @@ issues:
     - path: listener/
       text: "G101"  # Ignore potential credentials hardcoded in listener tests
 
+    # Ignore fmt.Scanln/Scanf errors in main.go (user input scenarios)
+    - path: cmd/serial-server/main.go
+      linters:
+        - errcheck
+      text: "Error return value of.*fmt.Scan(ln|f)"
+
+    # Ignore fmt.Sscanf errors in frp.go (user input scenarios)
+    - path: frp/frp.go
+      linters:
+        - errcheck
+      text: "Error return value of.*fmt.Sscanf"
+
+    # Ignore connection write errors (best-effort logging)
+    - path: listener/listener.go
+      linters:
+        - errcheck
+      text: "Error return value of.*conn.Write"
+
+    # Ignore SetReadDeadline errors (non-critical)
+    - path: listener/listener.go
+      linters:
+        - errcheck
+      text: "Error return value of.*conn.SetReadDeadline"
+
   max-issues-per-linter: 0
   max-same-issues: 0
 

@@ -166,6 +166,7 @@ jobs:
         run: go test -v -run "TestRequest|TestPending|TestCache" ./...
 
       - name: Run all tests with coverage
+        shell: bash
         run: |
           go test -v -coverprofile=coverage.out -covermode=atomic $(go list ./... | grep -v "/.out")
           go tool cover -func=coverage.out

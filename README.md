@@ -103,9 +103,7 @@ sequenceDiagram
 
 ### 安装
 
-#### 方式一：下载预编译版本（推荐）
-
-从 [Releases](https://github.com/whysmx/serial-server/releases) 下载对应平台：
+从 [Releases](https://github.com/whysmx/serial-server/releases) 下载对应平台的二进制文件：
 
 ```bash
 # Linux/macOS
@@ -114,16 +112,6 @@ chmod +x serial-server
 
 # Windows
 serial-server.exe
-```
-
-#### 方式二：源码编译
-
-```bash
-# 编译当前平台
-go build -o serial-server ./cmd/serial-server
-
-# 交叉编译（Linux ARM64）
-GOOS=linux GOARCH=arm64 go build -o serial-server ./cmd/serial-server
 ```
 
 ### 首次运行
@@ -231,35 +219,45 @@ telnet your-server-ip 9600
 
 ## FRP 内网穿透集成
 
-### 一键添加代理
+### 智能添加代理
 
-程序内置 FRP 管理功能，无需手动编辑配置：
+程序内置 FRP 管理功能，无需手动编辑配置文件：
 
 ```
 主菜单 → 5. FRP 管理 → 1. 添加代理
 ```
 
-自动完成：
+**自动完成**：
 - 读取当前配置的所有监听器
 - 为每个监听器生成 STCP 代理配置
+- 自动生成唯一代理名称（避免冲突）
 - 自动设置 `my_serial_server = true` 标记
 - 上传配置到 FRP Dashboard（`http://localhost:7400/api/config`）
 
-### 自动命名规则
+**代理命名规则**：
 
-| 配置名称 | 生成的代理名称 |
-|---------|---------------|
-| COM1_8001 | SERIALSERVER_COM1_8001 |
-| /dev/ttyUSB0_8002 | SERIALSERVER_ttyUSB0_8002 |
+| 配置 | 生成的代理名称 |
+|------|---------------|
+| COM1:8001 | SERIALSERVER_COM1_8001 |
+| /dev/ttyUSB0:8002 | SERIALSERVER_ttyUSB0_8002 |
 
-### 查看和清理
+### FRP 管理菜单
 
 ```
-FRP 管理菜单:
-  1. 添加代理  - 上传所有监听器配置
-  2. 查看配置  - 显示当前 FRP 配置
-  3. 清理代理  - 删除所有 my_serial_server 标记的代理
-  b. 返回
+1. 添加代理  - 智能添加所有监听器的 FRP 代理
+2. 查看配置  - 显示当前 FRP 服务器的所有代理配置
+3. 清理代理  - 删除所有 my_serial_server 标记的代理
+b. 返回
+```
+
+### 技术实现
+
+程序通过 FRP Dashboard API 自动管理配置：
+
+```go
+GET  http://localhost:7400/api/config  // 获取当前配置
+PUT  http://localhost:7400/api/config  // 上传新配置
+认证：Basic Auth (admin/admin)
 ```
 
 ## 部署到远程设备
