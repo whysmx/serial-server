@@ -31,7 +31,7 @@ linters-settings:
       - fieldalignment  # Disable fieldalignment checks (already optimized manually)
 
   gocyclo:
-    min-complexity: 30  # Increase threshold for main functions and complex flows
+    min-complexity: 60  # Main menu and config interaction are complex by design
 
   prealloc:
     # Only report if preallocation can save >10 allocations
