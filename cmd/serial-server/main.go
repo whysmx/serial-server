@@ -30,8 +30,8 @@ const (
 	colorReset = "\x1b[0m"  // 重置
 
 	// 经典绿风格 - 状态文字
-	emojiYes = "打勾" // 已添加/已配置
-	emojiNo  = "打叉" // 未添加/未配置
+	emojiYes = "✅" // 已添加/已配置
+	emojiNo  = "❌" // 未添加/未配置
 )
 
 var (
