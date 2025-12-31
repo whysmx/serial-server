@@ -10,6 +10,11 @@ config.ini
 # Docs (临时文件)
 docs/menu-styles.html
 
+# Local development
+scripts/
+.claude/
+CLAUDE.md
+
 # Logs
 *.log
 
