@@ -52,8 +52,7 @@ type Listener struct {
 	parity        string
 	displayFormat DisplayFormat
 	maxClients    int
-	clientCounter  uint64
-
+	clientCounter uint64
 	// TCP listener
 	tcpListener net.Listener
 

@@ -18,7 +18,7 @@ Serial-Server 不是普通的串口转发工具，它专为**工业场景**和**
 ## 核心架构
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph TCPClients [TCP 客户端]
         C1[客户端 #1]
         C2[客户端 #2]
@@ -26,31 +26,22 @@ flowchart TB
     end
 
     subgraph Server [TCP 服务端 - Serial-Server]
-        subgraph Queue [智能队列系统]
-            Cache[(响应缓存<br/>5秒 TTL)]
-            Inflight[inflight 请求]
-            Waiting[waiting 请求]
-            Pending[FIFO 待处理队列]
-        end
-
-        subgraph Serial [串口通信层]
-            SPort[串口设备]
-            Buffer[帧缓冲区<br/>50ms 间隔检测]
-        end
+        Queue[智能队列系统<br/>缓存/去重/FIFO]
+        Serial[串口通信层<br/>帧缓冲/间隔检测]
+        Device[串口设备]
     end
 
     C1 & C2 & C3 -->|TCP 连接| Queue
-    Queue -->|请求去重| Cache
-    Queue -->|FIFO 串行化| Pending
-    Pending -->|写入| SPort
-    SPort -->|响应| Buffer
-    Buffer -->|匹配返回| Queue
+    Queue -->|FIFO 串行化| Serial
+    Serial -->|写入| Device
+    Device -->|响应| Serial
+    Serial -->|匹配返回| Queue
     Queue -->|响应分发| C1 & C2 & C3
 
-    style Server fill:#e3f2fd
-    style Queue fill:#e1f5ff
-    style Cache fill:#fff4e1
-    style Serial fill:#e8f5e9
+    style Server fill:#e3f2fd,stroke:#2196f3
+    style Queue fill:#e1f5ff,stroke:#2196f3
+    style Serial fill:#e8f5e9,stroke:#4caf50
+    style TCPClients fill:#f3e5f5,stroke:#9c27b0
 ```
 
 ### 队列机制亮点
