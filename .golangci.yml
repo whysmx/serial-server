@@ -5,11 +5,9 @@ run:
 
 linters:
   enable:
-    - gofmt
     - govet
     - revive
     - staticcheck
-    - gosimple
     - ineffassign
     - unused
     - errcheck
@@ -82,7 +80,5 @@ issues:
   max-same-issues: 0
 
 output:
-  formats:
-    - format: colored-line-number
   print-issued-lines: true
   print-linter-name: true

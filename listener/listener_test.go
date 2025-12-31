@@ -8,12 +8,14 @@ import (
 	"time"
 )
 
+const testSerialPort = "/dev/ttyUSB0"
+
 // TestListenerCreation tests creating a new listener
 func TestListenerCreation(t *testing.T) {
 	l := NewListener(
 		"test_device",
 		9999,
-		"/dev/ttyUSB0",
+		testSerialPort,
 		115200,
 		8,
 		1,
@@ -33,8 +35,8 @@ func TestListenerCreation(t *testing.T) {
 		t.Errorf("Expected port 9999, got %d", l.GetListenPort())
 	}
 
-	if l.GetSerialPort() != "/dev/ttyUSB0" {
-		t.Errorf("Expected serial port '/dev/ttyUSB0', got '%s'", l.GetSerialPort())
+	if l.GetSerialPort() != testSerialPort {
+		t.Errorf("Expected serial port '%s', got '%s'", testSerialPort, l.GetSerialPort())
 	}
 
 	if l.GetBaudRate() != 115200 {
@@ -110,7 +112,7 @@ func TestTCPClientConnection(t *testing.T) {
 		}
 
 		// Write response
-		conn.Write([]byte("ACK"))
+		_, _ = conn.Write([]byte("ACK"))
 
 		serverStopped <- true
 	}()
@@ -203,7 +205,7 @@ func TestMultipleClients(t *testing.T) {
 				}
 
 				// Echo back
-				c.Write(buf[:n])
+				_, _ = c.Write(buf[:n])
 			}(conn)
 		}
 
@@ -265,7 +267,7 @@ func TestListenerStats(t *testing.T) {
 	l := NewListener(
 		"test_device",
 		9997,
-		"/dev/ttyUSB0",
+		testSerialPort,
 		115200,
 		8,
 		1,
@@ -298,7 +300,7 @@ func TestOnDataCallback(t *testing.T) {
 	l := NewListener(
 		"test_device",
 		9996,
-		"/dev/ttyUSB0",
+		testSerialPort,
 		115200,
 		8,
 		1,
@@ -342,7 +344,7 @@ func TestGetConfigMethods(t *testing.T) {
 	l := NewListener(
 		"test_device",
 		9995,
-		"/dev/ttyUSB0",
+		testSerialPort,
 		115200,
 		7,   // data bits
 		2,   // stop bits
@@ -448,7 +450,7 @@ func TestContains(t *testing.T) {
 
 // TestIsClosedError tests the isClosedError method
 func TestIsClosedError(t *testing.T) {
-	l := NewListener("test", 9999, "/dev/ttyUSB0", 115200, 8, 1, "N", FormatHEX)
+	l := NewListener("test", 9999, testSerialPort, 115200, 8, 1, "N", FormatHEX)
 
 	tests := []struct {
 		name     string
@@ -505,7 +507,7 @@ func TestIsClosedError(t *testing.T) {
 
 // TestIsTemporaryError tests the isTemporaryError method
 func TestIsTemporaryError(t *testing.T) {
-	l := NewListener("test", 9999, "/dev/ttyUSB0", 115200, 8, 1, "N", FormatHEX)
+	l := NewListener("test", 9999, testSerialPort, 115200, 8, 1, "N", FormatHEX)
 
 	tests := []struct {
 		name     string
@@ -519,12 +521,12 @@ func TestIsTemporaryError(t *testing.T) {
 		},
 		{
 			name:     "non-temporary error",
-			err:      &testError{msg: "some error", temp: false},
+			err:      &testError{msg: "some error", timeout: false},
 			expected: false,
 		},
 		{
-			name:     "temporary error",
-			err:      &testError{msg: "temporary error", temp: true},
+			name:     "temporary error (timeout)",
+			err:      &testError{msg: "timeout error", timeout: true},
 			expected: true,
 		},
 	}
@@ -542,13 +544,13 @@ func TestIsTemporaryError(t *testing.T) {
 
 // testError implements net.Error for testing
 type testError struct {
-	msg  string
-	temp bool
+	msg     string
+	timeout bool
 }
 
 func (e *testError) Error() string   { return e.msg }
-func (e *testError) Timeout() bool   { return false }
-func (e *testError) Temporary() bool { return e.temp }
+func (e *testError) Timeout() bool   { return e.timeout }
+func (e *testError) Temporary() bool { return e.timeout } // Deprecated but kept for compatibility
 
 // TestFormatForDisplayCompact tests the FormatForDisplayCompact function
 func TestFormatForDisplayCompact(t *testing.T) {

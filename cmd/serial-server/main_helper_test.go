@@ -283,13 +283,13 @@ func TestFindConfigFile(t *testing.T) {
 			if tt.setupFile {
 				// Create test file in temp directory
 				testPath := filepath.Join(tmpDir, tt.filename)
-				if err := os.WriteFile(testPath, []byte("test content"), 0644); err != nil {
+				if err := os.WriteFile(testPath, []byte("test content"), 0600); err != nil {
 					t.Fatalf("Failed to create test file: %v", err)
 				}
 
 				// Change to temp directory
 				originalDir, _ := os.Getwd()
-				defer os.Chdir(originalDir)
+				defer func() { _ = os.Chdir(originalDir) }()
 				if err := os.Chdir(tmpDir); err != nil {
 					t.Fatalf("Failed to change directory: %v", err)
 				}

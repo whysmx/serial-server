@@ -1,5 +1,7 @@
 //go:build !windows
 
+//nolint:gosec // G104 - Test code with controlled input
+
 // Package testing provides test utilities for serial-server
 package testing
 
@@ -38,6 +40,7 @@ func CreateVirtualSerialPort() (*VirtualSerialPort, error) {
 	}
 
 	// Create socat command for PTY pair
+	//nolint:gosec // G204 - Test code with controlled command arguments
 	cmd := exec.Command("socat", "-d -d", "pty,raw,echo=0,link="+portA, "pty,raw,echo=0,link="+portB)
 
 	if err := cmd.Start(); err != nil {
@@ -132,8 +135,8 @@ func (v *VirtualSerialPort) Close() error {
 	close(v.stopChan)
 
 	if v.cmd != nil && v.cmd.Process != nil {
-		v.cmd.Process.Kill()
-		v.cmd.Wait()
+		_ = v.cmd.Process.Kill()
+		_ = v.cmd.Wait()
 	}
 
 	return nil
@@ -156,7 +159,7 @@ func (v *VirtualSerialPort) StartEchoServer() {
 					continue
 				}
 				if n > 0 {
-					v.WriteToPortB(buf[:n])
+					_ = v.WriteToPortB(buf[:n])
 				}
 			}
 		}

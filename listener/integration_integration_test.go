@@ -1,6 +1,8 @@
 //go:build !windows
 // +build !windows
 
+//nolint:gosec // G104 - Test code with controlled input
+
 package listener
 
 import (
@@ -27,6 +29,7 @@ func TestVirtualSerialPortIntegration(t *testing.T) {
 	portB := "/tmp/ptyB-test-" + fmt.Sprintf("%d", time.Now().UnixNano())
 
 	// Start socat
+	//nolint:gosec // G204 - Test code with controlled command arguments
 	cmd := exec.Command("socat", "-d -d",
 		fmt.Sprintf("pty,raw,echo=0,link=%s", portA),
 		fmt.Sprintf("pty,raw,echo=0,link=%s", portB))
@@ -38,9 +41,9 @@ func TestVirtualSerialPortIntegration(t *testing.T) {
 	// Ensure cleanup
 	defer func() {
 		if cmd.Process != nil {
-			cmd.Process.Kill()
+			_ = cmd.Process.Kill()
 		}
-		cmd.Wait()
+		_ = cmd.Wait()
 		os.Remove(portA)
 		os.Remove(portB)
 	}()
@@ -87,7 +90,7 @@ func TestVirtualSerialPortIntegration(t *testing.T) {
 
 	// Read from port B
 	buffer := make([]byte, 1024)
-	portBFile.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_ = portBFile.SetReadDeadline(time.Now().Add(2 * time.Second))
 	n, err := portBFile.Read(buffer)
 	if err != nil {
 		portAFile.Close()
@@ -124,6 +127,7 @@ func TestTCPSerialDataTransfer(t *testing.T) {
 	portA := "/tmp/ptyA-tcp-" + fmt.Sprintf("%d", time.Now().UnixNano())
 	portB := "/tmp/ptyB-tcp-" + fmt.Sprintf("%d", time.Now().UnixNano())
 
+	//nolint:gosec // G204 - Test code with controlled command arguments
 	cmd := exec.Command("socat", "-d -d",
 		fmt.Sprintf("pty,raw,echo=0,link=%s", portA),
 		fmt.Sprintf("pty,raw,echo=0,link=%s", portB))
@@ -134,9 +138,9 @@ func TestTCPSerialDataTransfer(t *testing.T) {
 
 	defer func() {
 		if cmd.Process != nil {
-			cmd.Process.Kill()
+			_ = cmd.Process.Kill()
 		}
-		cmd.Wait()
+		_ = cmd.Wait()
 		os.Remove(portA)
 		os.Remove(portB)
 	}()
@@ -176,7 +180,7 @@ func TestTCPSerialDataTransfer(t *testing.T) {
 		if err != nil {
 			return
 		}
-		serialFile.Write(buf[:n])
+		_, _ = serialFile.Write(buf[:n])
 		serialFile.Close()
 
 		receivedData <- buf[:n]
@@ -213,7 +217,7 @@ func TestTCPSerialDataTransfer(t *testing.T) {
 	}
 
 	// Read from serial port (should have received what TCP sent)
-	serialFile.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_ = serialFile.SetReadDeadline(time.Now().Add(2 * time.Second))
 	buf := make([]byte, 1024)
 	n, err := serialFile.Read(buf)
 	if err != nil {
@@ -240,6 +244,7 @@ func TestMultipleClientsWithSerial(t *testing.T) {
 	portA := "/tmp/ptyA-multi-" + fmt.Sprintf("%d", time.Now().UnixNano())
 	portB := "/tmp/ptyB-multi-" + fmt.Sprintf("%d", time.Now().UnixNano())
 
+	//nolint:gosec // G204 - Test code with controlled command arguments
 	cmd := exec.Command("socat", "-d -d",
 		fmt.Sprintf("pty,raw,echo=0,link=%s", portA),
 		fmt.Sprintf("pty,raw,echo=0,link=%s", portB))
@@ -250,9 +255,9 @@ func TestMultipleClientsWithSerial(t *testing.T) {
 
 	defer func() {
 		if cmd.Process != nil {
-			cmd.Process.Kill()
+			_ = cmd.Process.Kill()
 		}
-		cmd.Wait()
+		_ = cmd.Wait()
 		os.Remove(portA)
 		os.Remove(portB)
 	}()
@@ -286,7 +291,7 @@ func TestMultipleClientsWithSerial(t *testing.T) {
 
 			go func(c net.Conn) {
 				defer c.Close()
-				io.Copy(c, c) // Echo
+				_, _ = io.Copy(c, c) // Echo
 			}(conn)
 		}
 	}()
@@ -306,10 +311,10 @@ func TestMultipleClientsWithSerial(t *testing.T) {
 			defer conn.Close()
 
 			testData := []byte(fmt.Sprintf("Client %d", clientNum))
-			conn.Write(testData)
+			_, _ = conn.Write(testData)
 
 			buf := make([]byte, 1024)
-			conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+			_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 			n, err := conn.Read(buf)
 			if err != nil {
 				t.Errorf("Client %d read failed: %v", clientNum, err)
