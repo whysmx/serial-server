@@ -818,7 +818,7 @@ func printConfigSummary(cfg *config.Config) {
 }
 
 // checkFRPStatus 检查端口是否已在 FRP 中添加代理
-func checkFRPStatus(serialPort string, port int) string {
+func checkFRPStatus(_ string, port int) string {
 	client := frp.NewClient()
 	proxyNames, proxyPorts, err := client.GetAllSerialServerProxies()
 	if err != nil {

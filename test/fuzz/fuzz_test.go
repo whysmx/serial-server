@@ -37,7 +37,7 @@ func FuzzListenerConfig(f *testing.F) {
 	f.Add("listener-with-dash")
 	f.Add("listener_with_underscore")
 
-	f.Fuzz(func(t *testing.T, name string) {
+	f.Fuzz(func(_ *testing.T, name string) {
 		cfg := &config.Config{
 			Listeners: []*config.ListenerConfig{
 				{

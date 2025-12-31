@@ -232,19 +232,6 @@ func (w *Wizard) runAddPorts(cfg *config.Config) (*config.Config, error) {
 	return cfg, nil
 }
 
-// selectPort lets user select a serial port.
-func (w *Wizard) selectPort(ports []PortInfo) string {
-	fmt.Print("  选择串口 (1-" + strconv.Itoa(len(ports)) + "): ")
-	ans := w.readLine()
-
-	idx, err := strconv.Atoi(ans)
-	if err != nil || idx < 1 || idx > len(ports) {
-		return ""
-	}
-
-	return ports[idx-1].Port
-}
-
 // configureSerialListener configures a serial listener.
 func (w *Wizard) configureSerialListener(port string, num int) *config.ListenerConfig {
 	l := &config.ListenerConfig{
@@ -357,19 +344,6 @@ func (w *Wizard) readLine() string {
 	line, _ := w.reader.ReadString('\n')
 	line = strings.TrimSpace(line)
 	return line
-}
-
-// readInt reads an integer from stdin.
-func (w *Wizard) readInt(defaultVal int) int {
-	line := w.readLine()
-	if line == "" {
-		return defaultVal
-	}
-	val, err := strconv.Atoi(line)
-	if err != nil {
-		return defaultVal
-	}
-	return val
 }
 
 // SelectPortInteractive provides interactive port selection with auto-refresh.
