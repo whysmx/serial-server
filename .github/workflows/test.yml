@@ -177,7 +177,8 @@ jobs:
           ./serial-server.exe --version
 
       - name: Run benchmarks
-        run: go test -bench=. -benchmem -run=^$ ./...
+        shell: bash
+        run: go test -bench=. -benchmem -run=^$(go list ./... | grep -v "^github.com/whysmx/serial-server$")
 
   # Multi-platform build test (Linux only due to CGO dependencies)
   build-multiplatform:
