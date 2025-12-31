@@ -22,18 +22,23 @@ jobs:
       - name: Install dependencies
         run: |
           go mod tidy
-          go get github.com/creack/pty
-          go get gopkg.in/ini.v1
-          go get github.com/tarm/serial
+          sudo apt-get update
+          sudo apt-get install -y socat
 
       - name: Run unit tests
         run: go test -v -short ./...
 
-      - name: Run integration tests
-        run: go test -v -run TestVirtualSerialPort ./...
-
       - name: Run configuration tests
         run: go test -v -run TestConfig ./...
+
+      - name: Run TCP tests
+        run: go test -v -run "TestTCP|TestMultipleClients" ./...
+
+      - name: Run queue tests
+        run: go test -v -run "TestRequest|TestPending|TestCache" ./...
+
+      - name: Run integration tests (with socat)
+        run: go test -v -run "TestVirtual|TestTCPSerial" ./...
 
       - name: Run all tests with coverage
         run: |
@@ -66,10 +71,18 @@ jobs:
       - name: Install dependencies
         run: |
           go mod tidy
-          go get github.com/tarm/serial
 
       - name: Run unit tests
         run: go test -v -short ./...
+
+      - name: Run configuration tests
+        run: go test -v -run TestConfig ./...
+
+      - name: Run TCP tests
+        run: go test -v -run "TestTCP|TestMultipleClients" ./...
+
+      - name: Run queue tests
+        run: go test -v -run "TestRequest|TestPending|TestCache" ./...
 
       - name: Build Windows binary
         run: |
