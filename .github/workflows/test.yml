@@ -125,7 +125,7 @@ jobs:
 
       - name: Build binary
         run: |
-          go build -v -o serial-server .
+          go build -v -o serial-server ./cmd/serial-server
           ./serial-server --version
 
       - name: Run benchmarks
@@ -172,7 +172,7 @@ jobs:
 
       - name: Build Windows binary
         run: |
-          go build -v -o serial-server.exe .
+          go build -v -o serial-server.exe ./cmd/serial-server
           ./serial-server.exe --version
 
       - name: Run benchmarks
@@ -212,7 +212,7 @@ jobs:
       - name: Build for ${{ matrix.goos }}/${{ matrix.goarch }}
         run: |
           mkdir -p dist
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -v -o dist/serial-server${{ matrix.suffix }} .
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -v -o dist/serial-server${{ matrix.suffix }} ./cmd/serial-server
           ls -lh dist/
 
       - name: Upload build artifacts

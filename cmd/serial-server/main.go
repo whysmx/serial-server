@@ -25,25 +25,25 @@ const (
 	version           = "1.12.5"
 
 	// 经典绿风格 - 颜色定义
-	colorGreen  = "\x1b[32m"  // 绿色
-	colorRed    = "\x1b[31m"  // 红色
-	colorReset  = "\x1b[0m"   // 重置
+	colorGreen = "\x1b[32m" // 绿色
+	colorRed   = "\x1b[31m" // 红色
+	colorReset = "\x1b[0m"  // 重置
 
 	// 经典绿风格 - 状态文字
-	emojiYes = "打勾"  // 已添加/已配置
-	emojiNo  = "打叉"  // 未添加/未配置
+	emojiYes = "打勾" // 已添加/已配置
+	emojiNo  = "打叉" // 未添加/未配置
 )
 
 var (
-	configFile   string
-	listPorts    bool
-	checkConfig  bool
-	wizardMode   bool
-	showConfig   bool
-	logFile      string
-	logLevel     string
-	showVersion  bool
-	cfg          *config.Config
+	configFile  string
+	listPorts   bool
+	checkConfig bool
+	wizardMode  bool
+	showConfig  bool
+	logFile     string
+	logLevel    string
+	showVersion bool
+	cfg         *config.Config
 )
 
 func init() {
