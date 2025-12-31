@@ -48,13 +48,13 @@ jobs:
           $env:GOARCH="${{ matrix.goarch }}"
           $env:CGO_ENABLED="0"
           $version = "${{ github.ref_name }}"
-          go build -trimpath -ldflags "-s -w" -o "serial-server-$version-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
+          go build -trimpath -ldflags "-s -w" -o "serial-server-$version-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" ./cmd/serial-server
 
       - name: Build (Linux)
         if: runner.os != 'Windows'
         run: |
           version="${{ github.ref_name }}"
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "serial-server-$version-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "serial-server-$version-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" ./cmd/serial-server
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
