@@ -167,7 +167,7 @@ jobs:
 
       - name: Run all tests with coverage
         run: |
-          go test -v -coverprofile=coverage.out -covermode=atomic ./...
+          go test -v -coverprofile=coverage.out -covermode=atomic $(go list ./... | grep -v "/.out")
           go tool cover -func=coverage.out
 
       - name: Build Windows binary
