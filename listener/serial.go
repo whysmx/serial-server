@@ -1,24 +1,145 @@
-// Package serialhelper provides serial port utilities for cross-platform support.
-package serialhelper
+// Package listener implements the serial server listener.
+package listener
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/tarm/serial"
 )
 
-// ComUsbPair 串口与USB设备映射关系
-type ComUsbPair struct {
-	Lock sync.RWMutex
-	Data map[string]string // COM号 -> USB路径 (如 COM1 -> /dev/ttyUSB0)
+// Port represents a serial port connection.
+type Port struct {
+	config *serial.Config
+	port   io.ReadWriteCloser
+	mu     sync.RWMutex
+	name   string
+	baud   int
 }
 
-var Default = NewComUsbPair()
+// Open opens a serial port with the given configuration.
+func Open(portName string, baudRate int, dataBits int, stopBits int, parity string, rtscts bool) (*Port, error) {
+	var parityVal serial.Parity
+	switch parity {
+	case "N", "n", "None", "":
+		parityVal = serial.ParityNone
+	case "O", "o", "Odd":
+		parityVal = serial.ParityOdd
+	case "E", "e", "Even":
+		parityVal = serial.ParityEven
+	default:
+		return nil, fmt.Errorf("unsupported parity: %s (supported: N/O/E)", parity)
+	}
+
+	var stopBitsVal serial.StopBits
+	switch stopBits {
+	case 1:
+		stopBitsVal = serial.Stop1
+	case 2:
+		stopBitsVal = serial.Stop2
+	default:
+		return nil, fmt.Errorf("unsupported stop bits: %d (supported: 1 or 2)", stopBits)
+	}
+
+	if dataBits < 5 || dataBits > 8 {
+		return nil, fmt.Errorf("unsupported data bits: %d (supported: 5-8)", dataBits)
+	}
+
+	if rtscts {
+		log.Printf("[serial] WARNING: RTS/CTS flow control requested but not supported")
+	}
+
+	config := &serial.Config{
+		Name:        portName,
+		Baud:        baudRate,
+		ReadTimeout: 50 * time.Millisecond,
+		Size:        byte(dataBits),
+		Parity:      parityVal,
+		StopBits:    stopBitsVal,
+	}
+
+	port, err := serial.OpenPort(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open serial port %s: %w", portName, err)
+	}
+
+	log.Printf("[serial] opened %s baud=%d size=%d parity=%s stop=%d",
+		portName, baudRate, dataBits, parity, stopBits)
+
+	return &Port{
+		config: config,
+		port:   port,
+		name:   portName,
+		baud:   baudRate,
+	}, nil
+}
+
+func (p *Port) Close() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.port != nil {
+		err := p.port.Close()
+		p.port = nil
+		if err != nil {
+			return fmt.Errorf("failed to close serial port %s: %w", p.name, err)
+		}
+		log.Printf("[serial] closed %s", p.name)
+	}
+	return nil
+}
+
+func (p *Port) Read(b []byte) (n int, err error) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	if p.port == nil {
+		return 0, fmt.Errorf("serial port %s is closed", p.name)
+	}
+
+	return p.port.Read(b)
+}
+
+func (p *Port) Write(b []byte) (n int, err error) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	if p.port == nil {
+		return 0, fmt.Errorf("serial port %s is closed", p.name)
+	}
+
+	return p.port.Write(b)
+}
+
+func (p *Port) Name() string {
+	return p.name
+}
+
+func (p *Port) Baud() int {
+	return p.baud
+}
+
+func (p *Port) IsOpen() bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.port != nil
+}
+
+// ======== Serial Helper Functions ========
+
+type ComUsbPair struct {
+	Lock sync.RWMutex
+	Data map[string]string
+}
+
+var DefaultComUsb = NewComUsbPair()
 
 func NewComUsbPair() *ComUsbPair {
 	return &ComUsbPair{
@@ -34,7 +155,6 @@ func IsWindows() bool {
 	return strings.Contains(strings.ToLower(runtime.GOOS), "windows")
 }
 
-// UpdateComAndUsbPair 更新串口与USB设备映射关系
 func (c *ComUsbPair) UpdateComAndUsbPair() error {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
@@ -53,7 +173,6 @@ func (c *ComUsbPair) UpdateComAndUsbPair() error {
 	return nil
 }
 
-// GetUsbFromCom 根据COM号获取对应的USB路径
 func (c *ComUsbPair) GetUsbFromCom(comName string) string {
 	c.Lock.RLock()
 	defer c.Lock.RUnlock()
@@ -64,7 +183,6 @@ func (c *ComUsbPair) GetUsbFromCom(comName string) string {
 	return comName
 }
 
-// GetAllComNames 获取所有COM号列表
 func (c *ComUsbPair) GetAllComNames() []string {
 	c.Lock.RLock()
 	defer c.Lock.RUnlock()
@@ -76,8 +194,6 @@ func (c *ComUsbPair) GetAllComNames() []string {
 	return comNames
 }
 
-// parseComUsbPair 解析 ls -l /dev/ 输出
-// 示例: lrwxrwxrwx ... COM1 -> ttyUSB0
 func parseComUsbPair(output string) map[string]string {
 	result := make(map[string]string)
 	lines := strings.Split(output, "\n")
@@ -91,14 +207,12 @@ func parseComUsbPair(output string) map[string]string {
 		left := strings.TrimSpace(parts[0])
 		right := strings.TrimSpace(parts[1])
 
-		// 提取左侧最后一个词作为设备名
 		fields := strings.Fields(left)
 		if len(fields) == 0 {
 			continue
 		}
 		deviceName := fields[len(fields)-1]
 
-		// 只处理 COM* 和 RS485_*
 		if !strings.HasPrefix(deviceName, "COM") && !strings.HasPrefix(deviceName, "RS485_") {
 			continue
 		}
@@ -112,13 +226,11 @@ func parseComUsbPair(output string) map[string]string {
 	return result
 }
 
-// GetPortName 获取用于打开串口的实际端口名
 func GetPortName(comName string, useOrgPortName bool) string {
 	if IsWindows() {
 		return comName
 	}
 
-	// 如果已经是完整路径，直接返回
 	if strings.HasPrefix(comName, "/dev/") {
 		return comName
 	}
@@ -127,26 +239,20 @@ func GetPortName(comName string, useOrgPortName bool) string {
 		return "/dev/" + comName
 	}
 
-	// 先尝试从映射获取
-	usbPath := Default.GetUsbFromCom(comName)
+	usbPath := DefaultComUsb.GetUsbFromCom(comName)
 	if usbPath != comName {
 		return usbPath
 	}
 
-	// 否则加上 /dev/ 前缀
 	return "/dev/" + comName
 }
 
-// ScanAvailablePorts 扫描可用串口
-// Linux: 返回 COM*、RS485_* 符号链接（不带 /dev/） + 底层串口设备（带 /dev/）
-// Windows: 返回 COM1-COM256
 func ScanAvailablePorts() []string {
 	var ports []string
 
 	if IsWindows() {
 		for i := 1; i <= 256; i++ {
 			portName := fmt.Sprintf("COM%d", i)
-			// Windows 串口需要用 serial.Open 打开
 			c := &serial.Config{Name: portName, Baud: 9600}
 			if s, err := serial.OpenPort(c); err == nil {
 				s.Close()
@@ -154,7 +260,6 @@ func ScanAvailablePorts() []string {
 			}
 		}
 	} else {
-		// 扫描 COM* 和 RS485_* 符号链接（去掉 /dev/ 前缀）
 		if matches, err := filepath.Glob("/dev/COM*"); err == nil {
 			for _, m := range matches {
 				ports = append(ports, strings.TrimPrefix(m, "/dev/"))
@@ -166,7 +271,6 @@ func ScanAvailablePorts() []string {
 			}
 		}
 
-		// 扫描底层串口设备（保留 /dev/ 前缀）
 		serialPatterns := []string{
 			"/dev/ttyUSB*",
 			"/dev/ttyACM*",

@@ -2,7 +2,6 @@
 package listener
 
 import (
-	"serial-server/serial"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -122,7 +121,7 @@ type WriteQueue struct {
 	cache   *RequestCache
 	pending []*PendingRequest
 	mu      sync.Mutex
-	serial  *serial.Port
+	serial  *Port
 
 	// ID generator for request matching
 	nextReqID atomic.Uint64
@@ -153,7 +152,7 @@ type WriteQueue struct {
 }
 
 // NewWriteQueue creates a new write queue.
-func NewWriteQueue(sp *serial.Port) *WriteQueue {
+func NewWriteQueue(sp *Port) *WriteQueue {
 	return &WriteQueue{
 		cache:         NewRequestCache(),
 		pending:       make([]*PendingRequest, 0),

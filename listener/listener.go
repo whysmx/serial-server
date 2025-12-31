@@ -2,8 +2,6 @@
 package listener
 
 import (
-	"serial-server/serial"
-	"serial-server/serialhelper"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
 )
 
 // DisplayFormat represents the data display format.
@@ -48,7 +47,7 @@ type Listener struct {
 	tcpListener net.Listener
 
 	// Serial port
-	serial *serial.Port
+	serial *Port
 
 	// Write queue for multi-client serialization
 	writeQueue *WriteQueue
@@ -101,18 +100,18 @@ func (l *Listener) Start() error {
 	var err error
 
 	// 更新 COM -> USB 映射
-	if err := serialhelper.Default.UpdateComAndUsbPair(); err != nil {
+	if err := DefaultComUsb.UpdateComAndUsbPair(); err != nil {
 		log.Printf("[listener:%s] warning: failed to update COM-USB mapping: %v", l.name, err)
 	}
 
 	// 获取实际串口路径
-	actualPort := serialhelper.GetPortName(l.serialPort, false)
+	actualPort := GetPortName(l.serialPort, false)
 
 	// Convert parity letter to lowercase
 	parityLower := strings.ToLower(l.parity)
 
 	// Open serial port
-	l.serial, err = serial.Open(actualPort, l.baudRate, l.dataBits, l.stopBits, parityLower, false)
+	l.serial, err = Open(actualPort, l.baudRate, l.dataBits, l.stopBits, parityLower, false)
 	if err != nil {
 		return fmt.Errorf("failed to open serial port %s (设备路径: %s): %w", l.serialPort, actualPort, err)
 	}

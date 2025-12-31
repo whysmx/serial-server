@@ -1,5 +1,5 @@
-// Package frp provides integration with local FRP client Dashboard (port 7400).
-package frp
+// Package main - serial-server
+package main
 
 import (
 	"fmt"

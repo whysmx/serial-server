@@ -1,9 +1,7 @@
-// Package wizard provides interactive configuration wizard for serial-server.
-package wizard
+// Package main - serial-server
+package main
 
 import (
-	"serial-server/config"
-	"serial-server/serialhelper"
 	"bufio"
 	"fmt"
 	"os"
@@ -13,7 +11,6 @@ import (
 
 // 经典绿风格 - 状态文字
 const (
-	emojiYes = "打勾"  // 已添加/已配置
 )
 
 // PortInfo represents information about a serial port.
@@ -35,7 +32,7 @@ func NewWizard() *Wizard {
 }
 
 // Run runs the configuration wizard.
-func (w *Wizard) Run(cfg *config.Config) (*config.Config, error) {
+func (w *Wizard) Run(cfg *Config) (*Config, error) {
 	fmt.Println()
 	fmt.Println("  Serial-Server 串口服务器配置向导")
 	fmt.Println("  ─────────────────────────────────")
@@ -118,7 +115,7 @@ func (w *Wizard) Run(cfg *config.Config) (*config.Config, error) {
 }
 
 // RunAddOnly 添加新配置（跳过确认提示，直接进入添加流程）
-func (w *Wizard) RunAddOnly(cfg *config.Config) (*config.Config, error) {
+func (w *Wizard) RunAddOnly(cfg *Config) (*Config, error) {
 	fmt.Println()
 	fmt.Println("  Serial-Server 串口服务器配置向导")
 	fmt.Println("  ─────────────────────────────────")
@@ -140,7 +137,7 @@ func (w *Wizard) RunAddOnly(cfg *config.Config) (*config.Config, error) {
 }
 
 // runAddPorts 执行添加串口的逻辑
-func (w *Wizard) runAddPorts(cfg *config.Config) (*config.Config, error) {
+func (w *Wizard) runAddPorts(cfg *Config) (*Config, error) {
 	// Scan for serial ports
 	fmt.Println("  扫描串口设备...")
 	ports := w.scanPorts()
@@ -237,16 +234,16 @@ func (w *Wizard) selectPort(ports []PortInfo) string {
 }
 
 // configureSerialListener configures a serial listener.
-func (w *Wizard) configureSerialListener(port string, num int) *config.ListenerConfig {
-	l := &config.ListenerConfig{
+func (w *Wizard) configureSerialListener(port string, num int) *ListenerConfig {
+	l := &ListenerConfig{
 		Name:          fmt.Sprintf("device_%d", num),
 		SerialPort:    port,
 		ListenPort:    8000 + num,
-		BaudRate:      config.DefaultBaudRate,
-		DataBits:      config.DefaultDataBits,
-		StopBits:      config.DefaultStopBits,
-		Parity:        config.DefaultParity,
-		DisplayFormat: config.DefaultDisplayFormat,
+		BaudRate:      DefaultBaudRate,
+		DataBits:      DefaultDataBits,
+		StopBits:      DefaultStopBits,
+		Parity:        DefaultParity,
+		DisplayFormat: DefaultDisplayFormat,
 	}
 
 	fmt.Println()
@@ -333,7 +330,7 @@ func (w *Wizard) scanPorts() []PortInfo {
 	var ports []PortInfo
 
 	// 使用 serialhelper 扫描可用串口
-	availablePorts := serialhelper.ScanAvailablePorts()
+	availablePorts := ScanAvailablePorts()
 
 	for _, p := range availablePorts {
 		desc := getPortDescription(p)
@@ -343,26 +340,6 @@ func (w *Wizard) scanPorts() []PortInfo {
 	return ports
 }
 
-// getPortDescription 返回串口描述
-func getPortDescription(port string) string {
-	port = strings.ToLower(port)
-	if strings.HasPrefix(port, "/dev/com") {
-		return "COM 映射串口"
-	}
-	if strings.HasPrefix(port, "/dev/rs485") {
-		return "RS485 串口"
-	}
-	if strings.Contains(port, "usb") {
-		return "USB 串口设备"
-	}
-	if strings.Contains(port, "ttyusb") {
-		return "USB 串口设备"
-	}
-	if strings.Contains(port, "ttyacm") {
-		return "USB CDC 设备"
-	}
-	return "串口设备"
-}
 
 // readLine reads a line from stdin.
 func (w *Wizard) readLine() string {
@@ -437,7 +414,7 @@ func (w *Wizard) WaitForEnter() {
 }
 
 // PrintSummary prints a summary of the configuration.
-func (w *Wizard) PrintSummary(cfg *config.Config) {
+func (w *Wizard) PrintSummary(cfg *Config) {
 	fmt.Println()
 	fmt.Println("  配置摘要:")
 	fmt.Println("  ───────")

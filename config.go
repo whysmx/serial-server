@@ -1,5 +1,5 @@
-// Package config handles configuration loading and saving for serial-server.
-package config
+// Package main - serial-server
+package main
 
 import (
 	"fmt"
