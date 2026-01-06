@@ -118,19 +118,19 @@ func fixConfigPermissions(configPath string) error {
 	// 修复目录权限为 755 (允许所有人进入)
 	log.Printf("[FRP]   修复目录权限: chmod 755 %s", configDir)
 	if err := os.Chmod(configDir, 0755); err != nil {
-		log.Printf("[FRP] " + colorERR + symWARN + colorRST + " 无法修改目录权限: %v", err)
+		log.Printf("[FRP] " + colorERR + "无法修改目录权限: %v", err)
 		log.Printf("[FRP]   请手动执行: sudo chmod 755 %s", configDir)
 	} else {
-		log.Printf("[FRP]   " + colorOK + symOK + colorRST + " 目录权限已修复")
+		log.Printf("[FRP]   " + colorOK + "目录权限已修复")
 	}
 
 	// 修复配置文件权限为 666 (允许所有人读写)
 	log.Printf("[FRP]   修复文件权限: chmod 666 %s", configPath)
 	if err := os.Chmod(configPath, 0666); err != nil {
-		log.Printf("[FRP] " + colorERR + symWARN + colorRST + " 无法修改文件权限: %v", err)
+		log.Printf("[FRP] " + colorERR + "无法修改文件权限: %v", err)
 		log.Printf("[FRP]   请手动执行: sudo chmod 666 %s", configPath)
 	} else {
-		log.Printf("[FRP]   " + colorOK + symOK + colorRST + " 文件权限已修复")
+		log.Printf("[FRP]   " + colorOK + "文件权限已修复")
 	}
 
 	log.Printf("[FRP] ===== 权限修复完成 =====")
@@ -194,7 +194,7 @@ func (c *Client) GetConfig() (string, error) {
 
 	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/config", nil)
 	if err != nil {
-		log.Printf("[FRP] " + colorERR + symERR + colorRST + " 创建请求失败: %v", err)
+		log.Printf("[FRP] " + colorERR + "创建请求失败: %v", err)
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 	req.SetBasicAuth(c.adminUser, c.adminPassword)
@@ -202,7 +202,7 @@ func (c *Client) GetConfig() (string, error) {
 	log.Printf("[FRP] 发送 GET 请求到: %s/api/config", c.baseURL)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		log.Printf("[FRP] " + colorERR + symERR + colorRST + " 连接 FRP Dashboard 失败: %v", err)
+		log.Printf("[FRP] " + colorERR + "连接 FRP Dashboard 失败: %v", err)
 		log.Printf("[FRP]   请检查 FRP 服务是否运行在: %s", c.baseURL)
 		return "", fmt.Errorf("连接 FRP Dashboard 失败: %w\n\n请检查:\n  1. FRP Dashboard 是否运行 (默认: http://localhost:7400)\n  2. 地址配置是否正确", err)
 	}
@@ -213,16 +213,16 @@ func (c *Client) GetConfig() (string, error) {
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		errMsg := string(body)
-		log.Printf("[FRP] " + colorERR + symERR + colorRST + " HTTP 错误: %d", resp.StatusCode)
+		log.Printf("[FRP] " + colorERR + "HTTP 错误: %d", resp.StatusCode)
 		log.Printf("[FRP]   响应内容: %s", errMsg)
 
 		// 检查是否是权限错误
 		if isPermissionError(errMsg) {
-			log.Printf("[FRP] " + colorERR + symWARN + colorRST + " 检测到权限错误，尝试自动修复...")
+			log.Printf("[FRP] " + colorERR + "检测到权限错误，尝试自动修复...")
 
 			configPath, err := findFRPCConfigPath()
 			if err != nil {
-				log.Printf("[FRP] " + colorERR + symERR + colorRST + " 无法自动修复: %v", err)
+				log.Printf("[FRP] " + colorERR + "无法自动修复: %v", err)
 				return "", fmt.Errorf("权限错误且无法自动修复: %s\n\n请手动执行:\n  sudo chmod 755 <frpc配置目录>\n  sudo chmod 666 <frpc配置文件>", errMsg)
 			}
 
@@ -241,11 +241,11 @@ func (c *Client) GetConfig() (string, error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("[FRP] " + colorERR + symERR + colorRST + " 读取响应失败: %v", err)
+		log.Printf("[FRP] " + colorERR + "读取响应失败: %v", err)
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
 
-	log.Printf("[FRP] " + colorOK + symOK + colorRST + " 成功获取配置，大小: %d 字节", len(body))
+	log.Printf("[FRP] " + colorOK + "成功获取配置，大小: %d 字节", len(body))
 	return string(body), nil
 }
 
@@ -259,7 +259,7 @@ func (c *Client) PutConfig(config string) error {
 
 	req, err := http.NewRequestWithContext(ctx, "PUT", c.baseURL+"/api/config", strings.NewReader(config))
 	if err != nil {
-		log.Printf("[FRP] " + colorERR + symERR + colorRST + " 创建请求失败: %v", err)
+		log.Printf("[FRP] " + colorERR + "创建请求失败: %v", err)
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 	req.SetBasicAuth(c.adminUser, c.adminPassword)
@@ -268,7 +268,7 @@ func (c *Client) PutConfig(config string) error {
 	log.Printf("[FRP] 发送 PUT 请求到: %s/api/config", c.baseURL)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		log.Printf("[FRP] " + colorERR + symERR + colorRST + " 上传配置失败: %v", err)
+		log.Printf("[FRP] " + colorERR + "上传配置失败: %v", err)
 		return fmt.Errorf("failed to put config: %w", err)
 	}
 	defer resp.Body.Close()
@@ -278,16 +278,16 @@ func (c *Client) PutConfig(config string) error {
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		errMsg := string(body)
-		log.Printf("[FRP] " + colorERR + symERR + colorRST + " 上传失败: HTTP %d", resp.StatusCode)
+		log.Printf("[FRP] " + colorERR + "上传失败: HTTP %d", resp.StatusCode)
 		log.Printf("[FRP]   响应内容: %s", errMsg)
 
 		// 检查是否是权限错误
 		if isPermissionError(errMsg) {
-			log.Printf("[FRP] " + colorERR + symWARN + colorRST + " 检测到权限错误，尝试自动修复...")
+			log.Printf("[FRP] " + colorERR + "检测到权限错误，尝试自动修复...")
 
 			configPath, err := findFRPCConfigPath()
 			if err != nil {
-				log.Printf("[FRP] " + colorERR + symERR + colorRST + " 无法自动修复: %v", err)
+				log.Printf("[FRP] " + colorERR + "无法自动修复: %v", err)
 				return fmt.Errorf("权限错误且无法自动修复: %s\n\n请手动执行:\n  sudo chmod 755 <frpc配置目录>\n  sudo chmod 666 <frpc配置文件>", errMsg)
 			}
 
@@ -304,7 +304,7 @@ func (c *Client) PutConfig(config string) error {
 		return fmt.Errorf("failed to put config: %s", errMsg)
 	}
 
-	log.Printf("[FRP] " + colorOK + symOK + colorRST + " 配置上传成功")
+	log.Printf("[FRP] " + colorOK + "配置上传成功")
 	return nil
 }
 
@@ -317,7 +317,7 @@ func (c *Client) Reload() error {
 
 	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/reload", nil)
 	if err != nil {
-		log.Printf("[FRP] " + colorERR + symERR + colorRST + " 创建重载请求失败: %v", err)
+		log.Printf("[FRP] " + colorERR + "创建重载请求失败: %v", err)
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 	req.SetBasicAuth(c.adminUser, c.adminPassword)
@@ -325,7 +325,7 @@ func (c *Client) Reload() error {
 	log.Printf("[FRP] 发送 GET 请求到: %s/api/reload", c.baseURL)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		log.Printf("[FRP] " + colorERR + symERR + colorRST + " 重载失败: %v", err)
+		log.Printf("[FRP] " + colorERR + "重载失败: %v", err)
 		return fmt.Errorf("failed to reload: %w", err)
 	}
 	defer resp.Body.Close()
@@ -334,12 +334,12 @@ func (c *Client) Reload() error {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		log.Printf("[FRP] " + colorERR + symERR + colorRST + " 重载失败: HTTP %d", resp.StatusCode)
+		log.Printf("[FRP] " + colorERR + "重载失败: HTTP %d", resp.StatusCode)
 		log.Printf("[FRP]   响应内容: %s", string(body))
 		return fmt.Errorf("failed to reload: %s", string(body))
 	}
 
-	log.Printf("[FRP] " + colorOK + symOK + colorRST + " 配置重载成功")
+	log.Printf("[FRP] " + colorOK + "配置重载成功")
 	return nil
 }
 
@@ -428,12 +428,12 @@ func (c *Client) AddSTCPProxy(serialPort string, newLocalPort int) error {
 
 	templateName, localIP, _, sk, useEncryption, useCompression, err := c.FindFirstSTCPProxy()
 	if err != nil {
-		log.Printf("[FRP] " + colorERR + symERR + colorRST + " 查找 STCP 模板失败: %v", err)
+		log.Printf("[FRP] " + colorERR + "查找 STCP 模板失败: %v", err)
 		log.Printf("[FRP]   请确保 FRP 配置文件中至少有一个 STCP 类型的代理作为模板")
 		return fmt.Errorf("查找 STCP 模板失败: %w\n\n请确保 FRP 配置文件中至少有一个 STCP 类型的代理作为模板", err)
 	}
 
-	log.Printf("[FRP] " + colorOK + symOK + colorRST + " 找到 STCP 模板:")
+	log.Printf("[FRP] " + colorOK + "找到 STCP 模板:")
 	log.Printf("[FRP]   模板名称: %s", templateName)
 	log.Printf("[FRP]   Local IP: %s", localIP)
 	log.Printf("[FRP]   SK: %s", sk)
@@ -442,13 +442,13 @@ func (c *Client) AddSTCPProxy(serialPort string, newLocalPort int) error {
 	// 获取当前配置
 	config, err := c.GetConfig()
 	if err != nil {
-		log.Printf("[FRP] " + colorERR + symERR + colorRST + " 获取配置失败: %v", err)
+		log.Printf("[FRP] " + colorERR + "获取配置失败: %v", err)
 		return fmt.Errorf("获取配置失败: %w", err)
 	}
 
 	// 检查是否已存在 local_port = newLocalPort 的代理
 	if hasSerialServerProxy(config, newLocalPort) {
-		log.Printf("[FRP] " + colorERR + symWARN + colorRST + " 端口 %d 的代理已存在", newLocalPort)
+		log.Printf("[FRP] " + colorERR + "端口 %d 的代理已存在", newLocalPort)
 		return fmt.Errorf("端口 %d 的串口代理已存在", newLocalPort)
 	}
 
@@ -488,17 +488,17 @@ func (c *Client) AddSTCPProxy(serialPort string, newLocalPort int) error {
 
 	// 上传新配置
 	if err := c.PutConfig(newConfig); err != nil {
-		log.Printf("[FRP] " + colorERR + symERR + colorRST + " 上传配置失败: %v", err)
+		log.Printf("[FRP] " + colorERR + "上传配置失败: %v", err)
 		return fmt.Errorf("上传配置失败: %w", err)
 	}
 
 	// 重新加载配置
 	if err := c.Reload(); err != nil {
-		log.Printf("[FRP] " + colorERR + symERR + colorRST + " 重新加载配置失败: %v", err)
+		log.Printf("[FRP] " + colorERR + "重新加载配置失败: %v", err)
 		return fmt.Errorf("重新加载配置失败: %w", err)
 	}
 
-	log.Printf("[FRP] " + colorOK + symOK + colorRST + " STCP 代理添加成功: %s", newName)
+	log.Printf("[FRP] " + colorOK + "STCP 代理添加成功: %s", newName)
 	log.Printf("[FRP] ===== 代理添加完成 =====")
 	return nil
 }
