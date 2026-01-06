@@ -546,9 +546,12 @@ func (c *Client) GetAllSerialServerProxies() ([]string, map[string]int, error) {
 	}
 
 	lines := strings.Split(config, "\n")
-	var proxyNames []string
-	proxyPorts := make(map[string]int)
-	inSerialServerSection := false
+	type proxyInfo struct {
+		name       string
+		port       int
+		hasMySerialServerMark bool
+	}
+	proxies := make(map[string]*proxyInfo)
 	currentName := ""
 
 	for _, line := range lines {
@@ -559,28 +562,43 @@ func (c *Client) GetAllSerialServerProxies() ([]string, map[string]int, error) {
 
 		// 检查是否进入新 section
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			inSerialServerSection = false
 			currentName = strings.Trim(line, "[]")
+			if _, exists := proxies[currentName]; !exists {
+				proxies[currentName] = &proxyInfo{name: currentName, port: 0, hasMySerialServerMark: false}
+			}
 			continue
 		}
 
-		// 检查是否是我们添加的代理配置（只要有 my_serial_server = xxx 就认为是）
+		// 检查是否是我们添加的代理配置
 		if strings.HasPrefix(line, "my_serial_server = ") {
-			inSerialServerSection = true
+			if info, exists := proxies[currentName]; exists {
+				info.hasMySerialServerMark = true
+			}
 			continue
 		}
 
 		// 解析端口号
-		if inSerialServerSection && strings.HasPrefix(line, "local_port = ") {
+		if strings.HasPrefix(line, "local_port = ") {
 			var port int
 			_, _ = fmt.Sscanf(line, "local_port = %d", &port)
-			if currentName != "" && port > 0 {
-				proxyNames = append(proxyNames, currentName)
-				proxyPorts[currentName] = port
+			if info, exists := proxies[currentName]; exists && port > 0 {
+				info.port = port
 			}
 		}
 	}
 
+	// 收集所有有 my_serial_server 标记的代理
+	var proxyNames []string
+	proxyPorts := make(map[string]int)
+	for _, info := range proxies {
+		if info.hasMySerialServerMark && info.port > 0 {
+			proxyNames = append(proxyNames, info.name)
+			proxyPorts[info.name] = info.port
+			log.Printf("[DEBUG] 找到串口代理: %s -> 端口 %d", info.name, info.port)
+		}
+	}
+
+	log.Printf("[DEBUG] 共找到 %d 个串口代理", len(proxyNames))
 	return proxyNames, proxyPorts, nil
 }
 
