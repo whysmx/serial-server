@@ -24,7 +24,7 @@ import (
 
 const (
 	defaultConfigFile = "config.ini"
-	version           = "1.2.10"
+	version           = "1.2.11"
 
 	// 经典绿风格 - 颜色定义
 	colorGreen = "\x1b[32m" // 绿色
@@ -147,10 +147,17 @@ func startInBackground() {
 	// 获取配置文件路径
 	configPath := findConfigFile(configFile)
 
-	// 构建命令：nohup ./serial-server -c config.yaml &
-	// 注意：不重定向输出，让日志正常写入文件
+	// 保存 PID，因为 cmd.Start() 后我们需要这个信息
+	var pid int
+
+	// 使用 nohup 在后台启动
+	// 不使用 exec.Command，而是直接启动一个新的进程
+	// 这样父进程退出后，子进程会被 init 接管，不会成为孤儿进程
 	cmd := exec.Command("nohup", execPath, "-c", configPath)
 	cmd.Dir = "."
+
+	// 不重定向输出，让日志正常写入文件
+	// nohup 会自动将输出重定向到 nohup.out
 
 	// 启动进程
 	if err := cmd.Start(); err != nil {
@@ -158,18 +165,23 @@ func startInBackground() {
 		os.Exit(1)
 	}
 
-	// 等待一小段时间，确保进程启动成功
-	time.Sleep(100 * time.Millisecond)
+	// 立即保存 PID
+	pid = cmd.Process.Pid
+
+	// 等待一小段时间，确保进程成功启动
+	time.Sleep(200 * time.Millisecond)
 
 	// 检查进程是否还在运行
-	if err := cmd.Process.Release(); err != nil {
-		fmt.Fprintf(os.Stderr, "后台进程启动失败: %v\n", err)
+	// 通过发送信号 0 来检查进程是否存在
+	if err := cmd.Process.Signal(syscall.Signal(0)); err != nil {
+		fmt.Fprintf(os.Stderr, "后台进程启动后立即退出\n")
+		fmt.Fprintf(os.Stderr, "请检查日志: tail -n 20 serial-server.log\n")
 		os.Exit(1)
 	}
 
-	fmt.Fprintf(os.Stderr, "✓ 程序已在后台运行 (PID: %d)\n", cmd.Process.Pid)
+	fmt.Fprintf(os.Stderr, "✓ 程序已在后台运行 (PID: %d)\n", pid)
 	fmt.Fprintln(os.Stderr, "  使用 'ps aux | grep serial-server' 查看进程")
-	fmt.Fprintln(os.Stderr, "  使用 'kill PID' 或 'pkill serial-server' 停止程序")
+	fmt.Fprintln(os.Stderr, "  使用 'kill %d' 或 'pkill serial-server' 停止程序", pid)
 	fmt.Fprintln(os.Stderr, "  使用 'tail -f serial-server.log' 查看日志")
 	os.Exit(0)
 }
