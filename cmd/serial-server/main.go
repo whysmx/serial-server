@@ -24,7 +24,7 @@ import (
 
 const (
 	defaultConfigFile = "config.ini"
-	version           = "1.2.5"
+	version           = "1.2.9"
 
 	// 经典绿风格 - 颜色定义
 	colorGreen = "\x1b[32m" // 绿色
@@ -131,6 +131,129 @@ func shouldUseColor() bool {
 
 	// Unix-like 系统通常支持颜色
 	return true
+}
+
+// startInBackground 后台运行程序
+func startInBackground() {
+	fmt.Fprintln(os.Stderr, "正在启动后台运行...")
+
+	// 获取当前可执行文件路径
+	execPath, err := os.Executable()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "获取可执行文件路径失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 构建命令：nohup ./serial-server -c config.yaml > /dev/null 2>&1 &
+	cmd := exec.Command("nohup", execPath, "-c", configFile)
+	cmd.Dir = "."
+	// 重定向输出到 /dev/null
+	devNull, err := os.OpenFile("/dev/null", os.O_RDWR, 0)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "打开 /dev/null 失败: %v\n", err)
+		os.Exit(1)
+	}
+	cmd.Stdout = devNull
+	cmd.Stderr = devNull
+
+	// 启动进程
+	if err := cmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "启动后台进程失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Fprintf(os.Stderr, "✓ 程序已在后台运行 (PID: %d)\n", cmd.Process.Pid)
+	fmt.Fprintln(os.Stderr, "  使用 'ps aux | grep serial-server' 查看进程")
+	fmt.Fprintln(os.Stderr, "  使用 'kill PID' 或 'pkill serial-server' 停止程序")
+	os.Exit(0)
+}
+
+// setupAutoStart 设置开机自启
+func setupAutoStart() {
+	fmt.Fprintln(os.Stderr, "正在设置开机自启...")
+
+	// 获取当前可执行文件路径
+	execPath, err := os.Executable()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "获取可执行文件路径失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 获取配置文件路径
+	configPath := findConfigFile(configFile)
+	absConfigPath, err := filepath.Abs(configPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "获取配置文件绝对路径失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	// systemd service 文件内容
+	serviceContent := fmt.Sprintf(`[Unit]
+Description=Serial Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=%s
+ExecStart=%s -c %s
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+`, filepath.Dir(execPath), execPath, absConfigPath)
+
+	// systemd 服务文件路径
+	servicePath := "/etc/systemd/system/serial-server.service"
+
+	// 检查是否已存在
+	if _, err := os.Stat(servicePath); err == nil {
+		fmt.Fprintln(os.Stderr, "检测到已存在开机自启配置")
+		fmt.Fprintf(os.Stderr, "  服务文件: %s\n", servicePath)
+		fmt.Fprint(os.Stderr, "是否覆盖? [y/N]: ")
+
+		var confirm string
+		fmt.Scanln(&confirm)
+		if strings.ToLower(confirm) != "y" {
+			fmt.Fprintln(os.Stderr, "取消设置")
+			os.Exit(0)
+		}
+	}
+
+	// 写入服务文件
+	if err := os.WriteFile(servicePath, []byte(serviceContent), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "写入服务文件失败: %v\n", err)
+		fmt.Fprintf(os.Stderr, "请使用 sudo 权限运行此程序\n")
+		os.Exit(1)
+	}
+
+	fmt.Fprintf(os.Stderr, "✓ 服务文件已创建: %s\n", servicePath)
+
+	// 重新加载 systemd
+	fmt.Fprintln(os.Stderr, "正在重新加载 systemd...")
+	reloadCmd := exec.Command("systemctl", "daemon-reload")
+	if err := reloadCmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "警告: 重新加载 systemd 失败: %v\n", err)
+	}
+
+	// 启用服务
+	fmt.Fprintln(os.Stderr, "正在启用开机自启...")
+	enableCmd := exec.Command("systemctl", "enable", "serial-server")
+	if err := enableCmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "启用开机自启失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Fprintln(os.Stderr, "✓ 开机自启已设置")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "管理命令:")
+	fmt.Fprintln(os.Stderr, "  启动服务: systemctl start serial-server")
+	fmt.Fprintln(os.Stderr, "  停止服务: systemctl stop serial-server")
+	fmt.Fprintln(os.Stderr, "  重启服务: systemctl restart serial-server")
+	fmt.Fprintln(os.Stderr, "  查看状态: systemctl status serial-server")
+	fmt.Fprintln(os.Stderr, "  查看日志: journalctl -u serial-server -f")
+	os.Exit(0)
 }
 
 func main() {
@@ -244,13 +367,15 @@ showMenu:
 		printConfigSummaryToStderr(cfg)
 		fmt.Fprintf(os.Stderr, "%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n", getGreen(), getReset())
 		fmt.Fprintf(os.Stderr, "%s请选择操作:%s\n", getGreen(), getReset())
-		fmt.Fprintf(os.Stderr, "%s  1 %s- 直接启动程序\n", getGreen(), getReset())
-		fmt.Fprintf(os.Stderr, "%s  2 %s- 添加新配置\n", getGreen(), getReset())
-		fmt.Fprintf(os.Stderr, "%s  3 %s- 修改配置\n", getGreen(), getReset())
-		fmt.Fprintf(os.Stderr, "%s  4 %s- 删除配置\n", getGreen(), getReset())
-		fmt.Fprintf(os.Stderr, "%s  5 %s- FRP 管理\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  1 %s- 直接启动\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  2 %s- 后台运行\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  3 %s- 开机自启\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  4 %s- 添加配置\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  5 %s- 修改配置\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  6 %s- 删除配置\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s  7 %s- FRP 管理\n", getGreen(), getReset())
 		fmt.Fprintf(os.Stderr, "%s  0 %s- 退出\n", getGreen(), getReset())
-		fmt.Fprintf(os.Stderr, "\n%s请输入选项 [1/2/3/4/5/0]: %s", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "\n%s请输入选项 [1-7/0]: %s", getGreen(), getReset())
 
 		var choice string
 		_, _ = fmt.Scanln(&choice)
@@ -262,6 +387,12 @@ showMenu:
 		case "1":
 			// 直接启动，继续执行
 		case "2":
+			// 后台运行
+			startInBackground()
+		case "3":
+			// 开机自启
+			setupAutoStart()
+		case "4":
 			// 添加新配置（直接进入添加模式，不询问是否添加）
 			wiz := wizard.NewWizard()
 			newCfg, err := wiz.RunAddOnly(cfg)
@@ -301,7 +432,7 @@ showMenu:
 			if err != nil {
 				log.Fatalf("重新加载配置失败: %v", err)
 			}
-		case "3":
+		case "5":
 			// 修改配置
 			if len(cfg.Listeners) == 0 {
 				fmt.Fprintln(os.Stderr, "没有可修改的配置")
@@ -318,7 +449,7 @@ showMenu:
 			if err != nil {
 				log.Fatalf("重新加载配置失败: %v", err)
 			}
-		case "4":
+		case "6":
 			// 删除配置
 			if len(cfg.Listeners) == 0 {
 				fmt.Fprintln(os.Stderr, "没有可删除的配置")
@@ -335,20 +466,17 @@ showMenu:
 			if err != nil {
 				log.Fatalf("重新加载配置失败: %v", err)
 			}
-			if len(cfg.Listeners) == 0 {
-				fmt.Fprintln(os.Stderr, "没有有效配置，请先添加配置")
-				os.Exit(1)
-			}
-		case "5":
+		case "7":
 			// FRP 管理
 			runFRPMenu()
+			goto showMenu
 		case "0":
-			fmt.Fprintln(os.Stderr, "退出程序")
-			return
+			fmt.Fprintln(os.Stderr, "退出")
+			os.Exit(0)
 		default:
-			fmt.Fprintln(os.Stderr, "无效选项，直接启动...")
+			fmt.Fprintln(os.Stderr, "无效选项")
+			os.Exit(1)
 		}
-		fmt.Fprintln(os.Stderr, "")
 	}
 
 	// 启动应用，如果失败则允许用户修改配置后重试
