@@ -238,7 +238,7 @@ showMenu:
 	if !listPorts && !checkConfig && !wizardMode {
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
-		fmt.Fprintf(os.Stderr, "%s                    Serial-Server 启动菜单%s\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s              Serial-Server v%s 启动菜单%s\n", getGreen(), version, getReset())
 		fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
 		fmt.Fprintln(os.Stderr, "")
 		printConfigSummaryToStderr(cfg)

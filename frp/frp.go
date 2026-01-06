@@ -71,12 +71,12 @@ func (c *Client) GetConfig() (string, error) {
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to get config: %w", err)
+		return "", fmt.Errorf("连接 FRP Dashboard 失败: %w\n\n请检查:\n  1. FRP Dashboard 是否运行 (默认: http://localhost:7400)\n  2. 地址配置是否正确", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("unexpected status: %d", resp.StatusCode)
+		return "", fmt.Errorf("FRP Dashboard 返回错误: %d\n\n可能原因:\n  1. 认证失败 (默认: admin/admin)\n  2. Dashboard 地址不正确\n  3. FRP 服务未正常运行", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -219,13 +219,13 @@ func (c *Client) FindFirstSTCPProxy() (proxyName string, localIP string, localPo
 func (c *Client) AddSTCPProxy(_ string, newLocalPort int) error {
 	templateName, localIP, _, sk, useEncryption, useCompression, err := c.FindFirstSTCPProxy()
 	if err != nil {
-		return fmt.Errorf("failed to find STCP template: %w", err)
+		return fmt.Errorf("查找 STCP 模板失败: %w\n\n请确保 FRP 配置文件中至少有一个 STCP 类型的代理作为模板", err)
 	}
 
 	// 获取当前配置
 	config, err := c.GetConfig()
 	if err != nil {
-		return fmt.Errorf("failed to get config: %w", err)
+		return fmt.Errorf("获取配置失败: %w", err)
 	}
 
 	// 检查是否已存在 local_port = newLocalPort 的代理
@@ -265,12 +265,12 @@ func (c *Client) AddSTCPProxy(_ string, newLocalPort int) error {
 
 	// 上传新配置
 	if err := c.PutConfig(newConfig); err != nil {
-		return fmt.Errorf("failed to put config: %w", err)
+		return fmt.Errorf("上传配置失败: %w", err)
 	}
 
 	// 重新加载配置
 	if err := c.Reload(); err != nil {
-		return fmt.Errorf("failed to reload: %w", err)
+		return fmt.Errorf("重新加载配置失败: %w", err)
 	}
 
 	return nil
