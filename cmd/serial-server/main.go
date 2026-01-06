@@ -1453,7 +1453,7 @@ func (m *runtimeManager) reloadConfig() error {
 func (m *runtimeManager) listConfigs() {
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
-	fmt.Fprintf(os.Stderr, "%s                    配置 (v%s)%s\n", getGreen(), version, getReset())
+	fmt.Fprintf(os.Stderr, "%s                    (v%s)%s\n", getGreen(), version, getReset())
 	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
 	fmt.Fprintln(os.Stderr, "")
 
