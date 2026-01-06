@@ -829,19 +829,20 @@ func runApp(cfg *config.Config) error {
 	// 在控制台只显示简洁提示
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "╔═══════════════════════════════════════════════════════════════╗")
-	fmt.Fprintln(os.Stderr, "║                   Serial-Server 后台运行中                       ║")
+	fmt.Fprintf(os.Stderr, "║           Serial-Server v%s 后台运行中              ║\n", version)
 	fmt.Fprintf(os.Stderr, "║  日志文件: %-54s ║\n", logFile)
 	fmt.Fprintln(os.Stderr, "║                                                                   ║")
-	fmt.Fprintln(os.Stderr, "║  运行时命令:                                                       ║")
-	fmt.Fprintln(os.Stderr, "║    help     - 显示帮助                                            ║")
-	fmt.Fprintln(os.Stderr, "║    reload   - 重新加载配置文件                                    ║")
-	fmt.Fprintln(os.Stderr, "║    add      - 添加新配置                                          ║")
-	fmt.Fprintln(os.Stderr, "║    modify   - 修改现有配置                                        ║")
-	fmt.Fprintln(os.Stderr, "║    delete   - 删除配置                                            ║")
-	fmt.Fprintln(os.Stderr, "║    list     - 列出当前配置                                        ║")
-	fmt.Fprintln(os.Stderr, "║    status   - 显示运行状态                                        ║")
-	fmt.Fprintln(os.Stderr, "║    frp      - FRP 管理                                           ║")
+	fmt.Fprintln(os.Stderr, "║  运行时管理命令:                                                   ║")
+	fmt.Fprintln(os.Stderr, "║    1 - 显示帮助                                                    ║")
+	fmt.Fprintln(os.Stderr, "║    2 - 重新加载配置文件                                            ║")
+	fmt.Fprintln(os.Stderr, "║    3 - 添加新配置                                                  ║")
+	fmt.Fprintln(os.Stderr, "║    4 - 修改现有配置                                                ║")
+	fmt.Fprintln(os.Stderr, "║    5 - 删除配置                                                    ║")
+	fmt.Fprintln(os.Stderr, "║    6 - 列出当前配置                                                ║")
+	fmt.Fprintln(os.Stderr, "║    7 - 显示运行状态                                                ║")
+	fmt.Fprintln(os.Stderr, "║    8 - FRP 管理                                                   ║")
 	fmt.Fprintln(os.Stderr, "║                                                                   ║")
+	fmt.Fprintln(os.Stderr, "║  提示: 输入数字即可执行，无需重启程序                              ║")
 	fmt.Fprintln(os.Stderr, "║  按 Ctrl+C 退出程序                                               ║")
 	fmt.Fprintln(os.Stderr, "╚═══════════════════════════════════════════════════════════════╝")
 	fmt.Fprintln(os.Stderr, "")
@@ -1293,12 +1294,68 @@ func (m *runtimeManager) listenForCommands() {
 				continue
 			}
 
-			parts := strings.Fields(input)
-			cmd := runtimeCommand(strings.ToLower(parts[0]))
+			// 只支持数字输入
+			var cmd runtimeCommand
+			var cmdName string
+			var needConfirm bool // 是否需要确认
+
+			switch input {
+			case "1":
+				cmd = cmdHelp
+				cmdName = "显示帮助"
+				needConfirm = false
+			case "2":
+				cmd = cmdReload
+				cmdName = "重新加载配置"
+				needConfirm = false
+			case "3":
+				cmd = cmdAdd
+				cmdName = "添加新配置"
+				needConfirm = false
+			case "4":
+				cmd = cmdModify
+				cmdName = "修改配置"
+				needConfirm = false
+			case "5":
+				cmd = cmdDelete
+				cmdName = "删除配置"
+				needConfirm = true // 危险操作，需要确认
+			case "6":
+				cmd = cmdList
+				cmdName = "列出配置"
+				needConfirm = false
+			case "7":
+				cmd = cmdStatus
+				cmdName = "显示状态"
+				needConfirm = false
+			case "8":
+				cmd = cmdFRPMenu
+				cmdName = "FRP 管理"
+				needConfirm = false
+			default:
+				fmt.Fprintf(os.Stderr, "\n[WARN] 无效输入: %s，请输入数字 1-8\n\n", input)
+				continue
+			}
+
+			// 危险操作需要确认
+			if needConfirm {
+				fmt.Fprintf(os.Stderr, "\n[确认] 即将执行: %s\n", cmdName)
+				fmt.Fprint(os.Stderr, "确认执行? [y/N]: ")
+
+				var confirm string
+				if scanner.Scan() {
+					confirm = strings.TrimSpace(strings.ToLower(scanner.Text()))
+				}
+
+				if confirm != "y" && confirm != "yes" {
+					fmt.Fprintln(os.Stderr, "[INFO] 已取消操作\n")
+					continue
+				}
+			}
 
 			req := runtimeRequest{
 				command: cmd,
-				data:    parts,
+				data:    []string{input},
 				result:  make(chan error, 1),
 			}
 
@@ -1307,7 +1364,7 @@ func (m *runtimeManager) listenForCommands() {
 			case m.requestChan <- req:
 				// 等待处理结果
 				if err := <-req.result; err != nil {
-					fmt.Fprintf(os.Stderr, "[ERROR] %v\n", err)
+					fmt.Fprintf(os.Stderr, "\n[ERROR] %v\n\n", err)
 				}
 			case <-m.stopChan:
 				return
@@ -1354,14 +1411,14 @@ func (m *runtimeManager) showHelp() {
 	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintf(os.Stderr, "%s可用命令:%s\n", getGreen(), getReset())
-	fmt.Fprintf(os.Stderr, "%s  help%s    - 显示此帮助信息\n", getGreen(), getReset())
-	fmt.Fprintf(os.Stderr, "%s  reload%s  - 重新加载配置文件（不影响正在运行的监听器）\n", getGreen(), getReset())
-	fmt.Fprintf(os.Stderr, "%s  add%s     - 添加新的监听器配置\n", getGreen(), getReset())
-	fmt.Fprintf(os.Stderr, "%s  modify%s  - 修改现有监听器配置\n", getGreen(), getReset())
-	fmt.Fprintf(os.Stderr, "%s  delete%s  - 删除监听器配置\n", getGreen(), getReset())
-	fmt.Fprintf(os.Stderr, "%s  list%s    - 列出当前所有配置\n", getGreen(), getReset())
-	fmt.Fprintf(os.Stderr, "%s  status%s  - 显示监听器运行状态\n", getGreen(), getReset())
-	fmt.Fprintf(os.Stderr, "%s  frp%s     - FRP 内网穿透管理\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  1%s - 显示此帮助信息\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  2%s - 重新加载配置文件（不影响正在运行的监听器）\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  3%s - 添加新的监听器配置\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  4%s - 修改现有监听器配置\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  5%s - 删除监听器配置\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  6%s - 列出当前所有配置\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  7%s - 显示监听器运行状态\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  8%s - FRP 内网穿透管理\n", getGreen(), getReset())
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintf(os.Stderr, "%s注意:%s\n", getGreen(), getReset())
 	fmt.Fprintln(os.Stderr, "  - 配置修改后会立即生效，不需要重启程序")
