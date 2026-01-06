@@ -24,7 +24,7 @@ import (
 
 const (
 	defaultConfigFile = "config.ini"
-	version           = "1.13.0"
+	version           = "1.2.5"
 
 	// 经典绿风格 - 颜色定义
 	colorGreen = "\x1b[32m" // 绿色
@@ -1070,9 +1070,9 @@ func frpAddProxy() {
 
 	client := frp.NewClient()
 	if err := client.AddSTCPProxy(listener.SerialPort, port); err != nil {
-		fmt.Fprintf(os.Stderr, "%s打叉 %s添加失败: %v\n", getRed(), getReset(), err)
+		fmt.Fprintf(os.Stderr, "%s失败%s 添加失败: %v\n", getRed(), getReset(), err)
 	} else {
-		fmt.Fprintf(os.Stderr, "%s打勾 %s成功添加 STCP 代理 [%s]\n", getGreen(), getReset(), proxyName)
+		fmt.Fprintf(os.Stderr, "%s成功%s 成功添加 STCP 代理 [%s]\n", getGreen(), getReset(), proxyName)
 	}
 }
 
@@ -1084,7 +1084,7 @@ func frpShowConfig() {
 	client := frp.NewClient()
 	config, err := client.GetConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s打叉 %s获取配置失败: %v\n", getRed(), getReset(), err)
+		fmt.Fprintf(os.Stderr, "%s失败%s 获取配置失败: %v\n", getRed(), getReset(), err)
 		return
 	}
 
@@ -1099,7 +1099,7 @@ func frpCleanupProxies() {
 	client := frp.NewClient()
 	proxyNames, proxyPorts, err := client.GetAllSerialServerProxies()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s打叉 %s获取配置失败: %v\n", getRed(), getReset(), err)
+		fmt.Fprintf(os.Stderr, "%s失败%s 获取配置失败: %v\n", getRed(), getReset(), err)
 		return
 	}
 
@@ -1127,16 +1127,16 @@ func frpCleanupProxies() {
 	successCount := 0
 	for _, name := range proxyNames {
 		if err := client.RemoveSerialServerProxy(name); err != nil {
-			fmt.Fprintf(os.Stderr, "打叉 移除 [%s] 失败: %v\n", name, err)
+			fmt.Fprintf(os.Stderr, "失败 移除 [%s] 失败: %v\n", name, err)
 		} else {
 			successCount++
 		}
 	}
 
 	if successCount > 0 {
-		fmt.Fprintf(os.Stderr, "%s打勾 %s已清理 %d 个串口代理配置\n", getGreen(), getReset(), successCount)
+		fmt.Fprintf(os.Stderr, "%s成功%s 已清理 %d 个串口代理配置\n", getGreen(), getReset(), successCount)
 	} else {
-		fmt.Fprintf(os.Stderr, "%s打叉 %s清理失败\n", getRed(), getReset())
+		fmt.Fprintf(os.Stderr, "%s失败%s 清理失败\n", getRed(), getReset())
 	}
 }
 
