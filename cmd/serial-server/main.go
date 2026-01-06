@@ -24,7 +24,7 @@ import (
 
 const (
 	defaultConfigFile = "config.ini"
-	version           = "1.2.12"
+	version           = "1.2.13"
 
 	// 经典绿风格 - 颜色定义
 	colorGreen = "\x1b[32m" // 绿色
@@ -151,9 +151,11 @@ func startInBackground() {
 	cmd := exec.Command(execPath, "-c", configPath)
 	cmd.Dir = "."
 
-	// 设置进程属性，创建新的会话
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setsid: true,
+	// 设置进程属性，创建新的会话（仅 Unix-like 系统）
+	if runtime.GOOS != "windows" {
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setsid: true,
+		}
 	}
 
 	// 启动进程
