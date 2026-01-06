@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 	"time"
@@ -18,6 +20,77 @@ const (
 	FRPCAdminUser     = "admin"
 	FRPCAdminPassword = "admin"
 )
+
+// findFRPCConfigPath 通过查找 frpc 进程获取配置文件路径
+func findFRPCConfigPath() (string, error) {
+	// 使用 ps 命令查找 frpc 进程
+	cmd := exec.Command("ps", "aux")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("执行 ps 命令失败: %w", err)
+	}
+
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "frpc") && strings.Contains(line, "-c") {
+			// 找到 frpc 进程，提取配置文件路径
+			// 例如: frpc -c /home/forlinx/frp/frpc.ini
+			parts := strings.Fields(line)
+			for i, part := range parts {
+				if part == "-c" && i+1 < len(parts) {
+					configPath := parts[i+1]
+					log.Printf("[FRP] 检测到 FRP 配置文件: %s", configPath)
+					return configPath, nil
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("未找到 frpc 进程")
+}
+
+// fixConfigPermissions 修复配置文件和目录权限
+func fixConfigPermissions(configPath string) error {
+	log.Printf("[FRP] ===== 开始自动修复权限 =====")
+	log.Printf("[FRP]   配置文件: %s", configPath)
+
+	// 获取配置文件所在目录
+	configDir := configPath
+	for strings.Count(configDir, "/") > strings.Count(strings.TrimRight(configPath, "/"), "/") {
+		configDir = strings.TrimSuffix(configDir, "/")
+	}
+	if lastSlash := strings.LastIndex(configDir, "/"); lastSlash > 0 {
+		configDir = configDir[:lastSlash]
+	}
+	log.Printf("[FRP]   配置目录: %s", configDir)
+
+	// 修复目录权限为 755 (允许所有人进入)
+	log.Printf("[FRP]   修复目录权限: chmod 755 %s", configDir)
+	if err := os.Chmod(configDir, 0755); err != nil {
+		log.Printf("[FRP] ⚠️  无法修改目录权限: %v", err)
+		log.Printf("[FRP]   请手动执行: sudo chmod 755 %s", configDir)
+	} else {
+		log.Printf("[FRP]   ✅ 目录权限已修复")
+	}
+
+	// 修复配置文件权限为 666 (允许所有人读写)
+	log.Printf("[FRP]   修复文件权限: chmod 666 %s", configPath)
+	if err := os.Chmod(configPath, 0666); err != nil {
+		log.Printf("[FRP] ⚠️  无法修改文件权限: %v", err)
+		log.Printf("[FRP]   请手动执行: sudo chmod 666 %s", configPath)
+	} else {
+		log.Printf("[FRP]   ✅ 文件权限已修复")
+	}
+
+	log.Printf("[FRP] ===== 权限修复完成 =====")
+	return nil
+}
+
+// isPermissionError 检查错误是否是权限错误
+func isPermissionError(errMsg string) bool {
+	return strings.Contains(errMsg, "permission denied") ||
+		strings.Contains(errMsg, "open ") && strings.Contains(errMsg, ": permission denied")
+}
 
 // SafeProxyName 生成安全的 FRP 代理名称
 // COM1_8001 -> SERIALSERVER_COM1_8001
@@ -59,7 +132,7 @@ func NewClientWithConfig(baseURL, adminUser, adminPassword string) *Client {
 	}
 }
 
-// getConfig retrieves the current FRPC configuration.
+// GetConfig retrieves the current FRPC configuration.
 func (c *Client) GetConfig() (string, error) {
 	log.Printf("[FRP] 正在获取配置...")
 	log.Printf("[FRP]   Dashboard URL: %s", c.baseURL)
@@ -88,8 +161,30 @@ func (c *Client) GetConfig() (string, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		errMsg := string(body)
 		log.Printf("[FRP] ❌ HTTP 错误: %d", resp.StatusCode)
-		log.Printf("[FRP]   响应内容: %s", string(body))
+		log.Printf("[FRP]   响应内容: %s", errMsg)
+
+		// 检查是否是权限错误
+		if isPermissionError(errMsg) {
+			log.Printf("[FRP] ⚠️  检测到权限错误，尝试自动修复...")
+
+			configPath, err := findFRPCConfigPath()
+			if err != nil {
+				log.Printf("[FRP] ❌ 无法自动修复: %v", err)
+				return "", fmt.Errorf("权限错误且无法自动修复: %s\n\n请手动执行:\n  sudo chmod 755 <frpc配置目录>\n  sudo chmod 666 <frpc配置文件>", errMsg)
+			}
+
+			// 修复权限
+			if err := fixConfigPermissions(configPath); err != nil {
+				return "", fmt.Errorf("修复权限失败: %w", err)
+			}
+
+			log.Printf("[FRP] 权限已修复，重试获取配置...")
+			// 重试一次
+			return c.GetConfig()
+		}
+
 		return "", fmt.Errorf("FRP Dashboard 返回错误: %d\n\n可能原因:\n  1. 认证失败 (默认: admin/admin)\n  2. Dashboard 地址不正确\n  3. FRP 服务未正常运行", resp.StatusCode)
 	}
 
@@ -103,7 +198,7 @@ func (c *Client) GetConfig() (string, error) {
 	return string(body), nil
 }
 
-// putConfig uploads new FRPC configuration.
+// PutConfig uploads new FRPC configuration.
 func (c *Client) PutConfig(config string) error {
 	log.Printf("[FRP] 正在上传配置...")
 	log.Printf("[FRP]   配置大小: %d 字节", len(config))
@@ -131,9 +226,31 @@ func (c *Client) PutConfig(config string) error {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		errMsg := string(body)
 		log.Printf("[FRP] ❌ 上传失败: HTTP %d", resp.StatusCode)
-		log.Printf("[FRP]   响应内容: %s", string(body))
-		return fmt.Errorf("failed to put config: %s", string(body))
+		log.Printf("[FRP]   响应内容: %s", errMsg)
+
+		// 检查是否是权限错误
+		if isPermissionError(errMsg) {
+			log.Printf("[FRP] ⚠️  检测到权限错误，尝试自动修复...")
+
+			configPath, err := findFRPCConfigPath()
+			if err != nil {
+				log.Printf("[FRP] ❌ 无法自动修复: %v", err)
+				return fmt.Errorf("权限错误且无法自动修复: %s\n\n请手动执行:\n  sudo chmod 755 <frpc配置目录>\n  sudo chmod 666 <frpc配置文件>", errMsg)
+			}
+
+			// 修复权限
+			if err := fixConfigPermissions(configPath); err != nil {
+				return fmt.Errorf("修复权限失败: %w", err)
+			}
+
+			log.Printf("[FRP] 权限已修复，重试上传配置...")
+			// 重试一次
+			return c.PutConfig(config)
+		}
+
+		return fmt.Errorf("failed to put config: %s", errMsg)
 	}
 
 	log.Printf("[FRP] ✅ 配置上传成功")
