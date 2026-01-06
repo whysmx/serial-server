@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"log"
@@ -23,7 +24,7 @@ import (
 
 const (
 	defaultConfigFile = "config.ini"
-	version           = "1.12.5"
+	version           = "1.13.0"
 
 	// 经典绿风格 - 颜色定义
 	colorGreen = "\x1b[32m" // 绿色
@@ -34,6 +35,36 @@ const (
 	emojiYes = "[√]" // 已添加/已配置
 	emojiNo  = "[×]" // 未添加/未配置
 )
+
+// 运行时命令类型
+type runtimeCommand string
+
+const (
+	cmdReload   runtimeCommand = "reload"   // 重新加载配置
+	cmdAdd      runtimeCommand = "add"      // 添加配置
+	cmdModify   runtimeCommand = "modify"   // 修改配置
+	cmdDelete   runtimeCommand = "delete"   // 删除配置
+	cmdList     runtimeCommand = "list"     // 列出配置
+	cmdStatus   runtimeCommand = "status"   // 显示状态
+	cmdHelp     runtimeCommand = "help"     // 显示帮助
+	cmdFRPMenu  runtimeCommand = "frp"      // FRP 管理
+)
+
+// 运行时命令请求
+type runtimeRequest struct {
+	command runtimeCommand
+	data    interface{}
+	result  chan error
+}
+
+// 运行时管理器
+type runtimeManager struct {
+	configPath  string
+	cfg         *config.Config
+	listeners   []*listener.Listener
+	requestChan chan runtimeRequest
+	stopChan    chan struct{}
+}
 
 var (
 	configFile  string
@@ -635,6 +666,8 @@ func loadOrCreateConfig(path string) (*config.Config, error) {
 }
 
 func runApp(cfg *config.Config) error {
+	configPath := findConfigFile(configFile)
+
 	listeners := make([]*listener.Listener, 0, len(cfg.Listeners))
 
 	for _, lcfg := range cfg.Listeners {
@@ -668,8 +701,27 @@ func runApp(cfg *config.Config) error {
 
 	log.Printf("[INFO] 已启动 %d 个监听器", len(listeners))
 
+	// 创建运行时管理器
+	manager := &runtimeManager{
+		configPath:  configPath,
+		cfg:         cfg,
+		listeners:   listeners,
+		requestChan: make(chan runtimeRequest, 10),
+		stopChan:    make(chan struct{}),
+	}
+
+	// 启动运行时命令监听
+	go manager.listenForCommands()
+
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+
+	// 处理运行时命令的 goroutine
+	go func() {
+		for req := range manager.requestChan {
+			manager.handleRuntimeCommand(req)
+		}
+	}()
 
 	// 记录启动信息到日志文件
 	log.Println("╔═══════════════════════════════════════════════════════════════")
@@ -780,6 +832,16 @@ func runApp(cfg *config.Config) error {
 	fmt.Fprintln(os.Stderr, "║                   Serial-Server 后台运行中                       ║")
 	fmt.Fprintf(os.Stderr, "║  日志文件: %-54s ║\n", logFile)
 	fmt.Fprintln(os.Stderr, "║                                                                   ║")
+	fmt.Fprintln(os.Stderr, "║  运行时命令:                                                       ║")
+	fmt.Fprintln(os.Stderr, "║    help     - 显示帮助                                            ║")
+	fmt.Fprintln(os.Stderr, "║    reload   - 重新加载配置文件                                    ║")
+	fmt.Fprintln(os.Stderr, "║    add      - 添加新配置                                          ║")
+	fmt.Fprintln(os.Stderr, "║    modify   - 修改现有配置                                        ║")
+	fmt.Fprintln(os.Stderr, "║    delete   - 删除配置                                            ║")
+	fmt.Fprintln(os.Stderr, "║    list     - 列出当前配置                                        ║")
+	fmt.Fprintln(os.Stderr, "║    status   - 显示运行状态                                        ║")
+	fmt.Fprintln(os.Stderr, "║    frp      - FRP 管理                                           ║")
+	fmt.Fprintln(os.Stderr, "║                                                                   ║")
 	fmt.Fprintln(os.Stderr, "║  按 Ctrl+C 退出程序                                               ║")
 	fmt.Fprintln(os.Stderr, "╚═══════════════════════════════════════════════════════════════╝")
 	fmt.Fprintln(os.Stderr, "")
@@ -787,6 +849,10 @@ func runApp(cfg *config.Config) error {
 	<-sigCh
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "[INFO] 正在关闭...")
+
+	// 停止运行时管理器
+	close(manager.stopChan)
+	close(manager.requestChan)
 
 	// 停止所有定时器
 	for _, buf := range buffers {
@@ -1208,4 +1274,238 @@ func getReset() string {
 		return colorReset
 	}
 	return ""
+}
+
+// listenForCommands 监听用户输入的运行时命令
+func (m *runtimeManager) listenForCommands() {
+	scanner := bufio.NewScanner(os.Stdin)
+	for {
+		select {
+		case <-m.stopChan:
+			return
+		default:
+			if !scanner.Scan() {
+				return
+			}
+
+			input := strings.TrimSpace(scanner.Text())
+			if input == "" {
+				continue
+			}
+
+			parts := strings.Fields(input)
+			cmd := runtimeCommand(strings.ToLower(parts[0]))
+
+			req := runtimeRequest{
+				command: cmd,
+				data:    parts,
+				result:  make(chan error, 1),
+			}
+
+			// 发送请求到主循环处理
+			select {
+			case m.requestChan <- req:
+				// 等待处理结果
+				if err := <-req.result; err != nil {
+					fmt.Fprintf(os.Stderr, "[ERROR] %v\n", err)
+				}
+			case <-m.stopChan:
+				return
+			}
+		}
+	}
+}
+
+// handleRuntimeCommand 处理运行时命令
+func (m *runtimeManager) handleRuntimeCommand(req runtimeRequest) {
+	switch req.command {
+	case cmdHelp:
+		m.showHelp()
+		req.result <- nil
+	case cmdReload:
+		req.result <- m.reloadConfig()
+	case cmdList:
+		m.listConfigs()
+		req.result <- nil
+	case cmdStatus:
+		m.showStatus()
+		req.result <- nil
+	case cmdAdd:
+		req.result <- m.addConfig()
+	case cmdModify:
+		req.result <- m.modifyConfig()
+	case cmdDelete:
+		req.result <- m.deleteConfig()
+	case cmdFRPMenu:
+		m.runFRPMenuRuntime()
+		req.result <- nil
+	default:
+		fmt.Fprintf(os.Stderr, "[WARN] 未知命令: %s\n", req.command)
+		fmt.Fprintf(os.Stderr, "[INFO] 输入 'help' 查看可用命令\n")
+		req.result <- nil
+	}
+}
+
+// showHelp 显示帮助信息
+func (m *runtimeManager) showHelp() {
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s                    运行时命令帮助%s\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintf(os.Stderr, "%s可用命令:%s\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  help%s    - 显示此帮助信息\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  reload%s  - 重新加载配置文件（不影响正在运行的监听器）\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  add%s     - 添加新的监听器配置\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  modify%s  - 修改现有监听器配置\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  delete%s  - 删除监听器配置\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  list%s    - 列出当前所有配置\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  status%s  - 显示监听器运行状态\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s  frp%s     - FRP 内网穿透管理\n", getGreen(), getReset())
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintf(os.Stderr, "%s注意:%s\n", getGreen(), getReset())
+	fmt.Fprintln(os.Stderr, "  - 配置修改后会立即生效，不需要重启程序")
+	fmt.Fprintln(os.Stderr, "  - 新增/删除监听器会动态调整运行中的监听器")
+	fmt.Fprintln(os.Stderr, "")
+}
+
+// reloadConfig 重新加载配置文件
+func (m *runtimeManager) reloadConfig() error {
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "[INFO] 正在重新加载配置文件...")
+
+	newCfg, err := config.Load(m.configPath)
+	if err != nil {
+		return fmt.Errorf("加载配置失败: %w", err)
+	}
+
+	if len(newCfg.Listeners) == 0 {
+		return fmt.Errorf("配置文件中没有监听器")
+	}
+
+	// 更新配置
+	m.cfg = newCfg
+	fmt.Fprintln(os.Stderr, "[INFO] 配置已重新加载")
+
+	// 显示新配置
+	m.listConfigs()
+
+	return nil
+}
+
+// listConfigs 列出当前配置
+func (m *runtimeManager) listConfigs() {
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s                    当前配置列表%s\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
+	fmt.Fprintln(os.Stderr, "")
+
+	if len(m.cfg.Listeners) == 0 {
+		fmt.Fprintln(os.Stderr, "  没有配置")
+		fmt.Fprintln(os.Stderr, "")
+		return
+	}
+
+	for i, l := range m.cfg.Listeners {
+		frpStatus := checkFRPStatus(l.SerialPort, l.ListenPort)
+		var statusColor string
+		if frpStatus == emojiYes {
+			statusColor = getGreen()
+		} else {
+			statusColor = getRed()
+		}
+
+		// 检查是否正在运行
+		running := "●"
+		runningColor := getRed()
+		for _, listener := range m.listeners {
+			if listener.GetName() == l.Name {
+				running = "●"
+				runningColor = getGreen()
+				break
+			}
+		}
+
+		fmt.Fprintf(os.Stderr, "  %d. %s%s%s %s:[%d %s %d %d %s] 端口[%d] frp[%s%s%s]\n",
+			i+1, runningColor, running, getReset(),
+			l.SerialPort, l.BaudRate, l.Parity, l.DataBits, l.StopBits, l.DisplayFormat,
+			l.ListenPort, statusColor, frpStatus, getReset())
+	}
+	fmt.Fprintln(os.Stderr, "")
+}
+
+// showStatus 显示运行状态
+func (m *runtimeManager) showStatus() {
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s                    运行状态%s\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
+	fmt.Fprintln(os.Stderr, "")
+
+	fmt.Fprintf(os.Stderr, "%s运行中的监听器:%s\n", getGreen(), getReset())
+	for i, l := range m.listeners {
+		stats := l.GetStats()
+		fmt.Fprintf(os.Stderr, "  %d. %s\n", i+1, l.GetName())
+		fmt.Fprintf(os.Stderr, "     状态: %s● 运行中%s\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "     客户端: %d\n", stats.Clients)
+		fmt.Fprintf(os.Stderr, "     接收: %d 字节 (%d 包)\n", stats.RxBytes, stats.RxPackets)
+		fmt.Fprintf(os.Stderr, "     发送: %d 字节 (%d 包)\n", stats.TxBytes, stats.TxPackets)
+		fmt.Fprintln(os.Stderr, "")
+	}
+}
+
+// addConfig 添加新配置
+func (m *runtimeManager) addConfig() error {
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "[INFO] 添加新配置...")
+
+	wiz := wizard.NewWizard()
+	newCfg, err := wiz.RunAddOnly(m.cfg)
+	if err != nil {
+		if strings.Contains(err.Error(), "no serial ports found") || strings.Contains(err.Error(), "没有可用的串口") {
+			fmt.Fprintln(os.Stderr, "")
+			fmt.Fprintln(os.Stderr, "⚠️  未检测到串口设备")
+			return nil
+		}
+		return fmt.Errorf("添加配置失败: %w", err)
+	}
+
+	m.cfg = newCfg
+	if err := config.Save(m.configPath, m.cfg); err != nil {
+		return fmt.Errorf("保存配置失败: %w", err)
+	}
+
+	fmt.Fprintln(os.Stderr, "[INFO] 配置已添加并保存")
+	m.listConfigs()
+
+	return nil
+}
+
+// modifyConfig 修改配置
+func (m *runtimeManager) modifyConfig() error {
+	if len(m.cfg.Listeners) == 0 {
+		return fmt.Errorf("没有可修改的配置")
+	}
+
+	return modifyConfigInteractively(m.cfg, m.configPath)
+}
+
+// deleteConfig 删除配置
+func (m *runtimeManager) deleteConfig() error {
+	if len(m.cfg.Listeners) == 0 {
+		return fmt.Errorf("没有可删除的配置")
+	}
+
+	return deleteConfigInteractively(m.cfg, m.configPath)
+}
+
+// runFRPMenuRuntime 运行时 FRP 菜单
+func (m *runtimeManager) runFRPMenuRuntime() {
+	// 使用全局 cfg 变量
+	oldCfg := cfg
+	cfg = m.cfg
+	defer func() { cfg = oldCfg }()
+
+	runFRPMenu()
 }
