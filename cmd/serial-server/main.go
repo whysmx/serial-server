@@ -24,7 +24,7 @@ import (
 
 const (
 	defaultConfigFile = "config.ini"
-	version           = "1.2.15"
+	version           = "1.2.16"
 
 	// 经典绿风格 - 颜色定义
 	colorGreen = "\x1b[32m" // 绿色

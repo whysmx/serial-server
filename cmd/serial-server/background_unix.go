@@ -7,8 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"syscall"
-	"time"
 )
 
 // startInBackground 后台运行程序（Unix 版本）
@@ -37,15 +35,20 @@ func startInBackground() {
 		os.Exit(1)
 	}
 
-	// 创建命令
-	cmd := exec.Command(execPath, "-c", absConfigPath)
-	cmd.Dir = wd // 设置工作目录为当前目录
+	// 使用 nohup 启动，输出重定向到 /dev/null
+	// nohup 会自动处理 SIGHUP 信号
+	cmd := exec.Command("nohup", execPath, "-c", absConfigPath)
+	cmd.Dir = wd
 
-	// 设置进程属性，创建新的会话，完全脱离终端
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setsid:  true,
-		Setctty: false,
+	// 重定向标准输出和错误到 /dev/null
+	devNull, err := os.OpenFile("/dev/null", os.O_RDWR, 0)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "打开 /dev/null 失败: %v\n", err)
+		os.Exit(1)
 	}
+	defer devNull.Close()
+	cmd.Stdout = devNull
+	cmd.Stderr = devNull
 
 	// 启动进程
 	if err := cmd.Start(); err != nil {
@@ -54,16 +57,6 @@ func startInBackground() {
 	}
 
 	pid := cmd.Process.Pid
-
-	// 等待一小段时间，确保进程成功启动
-	time.Sleep(300 * time.Millisecond)
-
-	// 检查进程是否还在运行
-	if err := cmd.Process.Signal(syscall.Signal(0)); err != nil {
-		fmt.Fprintf(os.Stderr, "后台进程启动后立即退出\n")
-		fmt.Fprintf(os.Stderr, "请检查日志: tail -n 20 serial-server.log\n")
-		os.Exit(1)
-	}
 
 	fmt.Fprintf(os.Stderr, "✓ 程序已在后台运行 (PID: %d)\n", pid)
 	fmt.Fprintln(os.Stderr, "  使用 'ps aux | grep serial-server' 查看进程")
