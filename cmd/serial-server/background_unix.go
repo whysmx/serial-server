@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 	"time"
 )
@@ -21,12 +22,24 @@ func startInBackground() {
 		os.Exit(1)
 	}
 
-	// 获取配置文件路径
+	// 获取配置文件路径（绝对路径）
 	configPath := findConfigFile(configFile)
+	absConfigPath, err := filepath.Abs(configPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "获取配置文件绝对路径失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 获取当前工作目录
+	wd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "获取当前工作目录失败: %v\n", err)
+		os.Exit(1)
+	}
 
 	// 创建命令
-	cmd := exec.Command(execPath, "-c", configPath)
-	cmd.Dir = "."
+	cmd := exec.Command(execPath, "-c", absConfigPath)
+	cmd.Dir = wd // 设置工作目录为当前目录
 
 	// 设置进程属性，创建新的会话，完全脱离终端
 	cmd.SysProcAttr = &syscall.SysProcAttr{
@@ -43,7 +56,7 @@ func startInBackground() {
 	pid := cmd.Process.Pid
 
 	// 等待一小段时间，确保进程成功启动
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(300 * time.Millisecond)
 
 	// 检查进程是否还在运行
 	if err := cmd.Process.Signal(syscall.Signal(0)); err != nil {
