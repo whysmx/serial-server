@@ -611,34 +611,30 @@ func (c *Client) RemoveSerialServerProxy(proxyName string) error {
 
 	lines := strings.Split(config, "\n")
 	newLines := make([]string, 0, len(lines))
-	inSerialServerSection := false
-	skipUntilNextSection := false
+	skipSection := false
+	currentSection := ""
 
 	for _, line := range lines {
-		line = strings.TrimSpace(line)
+		trimmedLine := strings.TrimSpace(line)
 
 		// 检查是否进入新 section
-		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			sectionName := strings.Trim(line, "[]")
-			if sectionName == proxyName && inSerialServerSection {
-				skipUntilNextSection = true
-				inSerialServerSection = false
-				continue
+		if strings.HasPrefix(trimmedLine, "[") && strings.HasSuffix(trimmedLine, "]") {
+			currentSection = strings.Trim(trimmedLine, "[]")
+
+			// 如果是要删除的 section，标记为跳过
+			if currentSection == proxyName {
+				skipSection = true
+			} else {
+				skipSection = false
 			}
-			skipUntilNextSection = false
-			// 检查是否是串口服务器代理的 section
-			inSerialServerSection = false
 		}
 
-		if skipUntilNextSection {
+		// 跳过要删除的 section 的所有内容
+		if skipSection {
 			continue
 		}
 
-		// 检查是否是我们添加的代理配置（只要有 my_serial_server = xxx 就认为是）
-		if strings.HasPrefix(line, "my_serial_server = ") {
-			inSerialServerSection = true
-		}
-
+		// 保留不需要删除的内容
 		newLines = append(newLines, line)
 	}
 
