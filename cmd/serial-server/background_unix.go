@@ -35,10 +35,13 @@ func startInBackground() {
 		os.Exit(1)
 	}
 
-	// 使用 nohup 启动，输出重定向到 /dev/null
-	// nohup 会自动处理 SIGHUP 信号
+	// 使用 nohup 启动，设置环境变量告诉子进程直接启动
+	// 不显示菜单，直接进入运行模式
 	cmd := exec.Command("nohup", execPath, "-c", absConfigPath)
 	cmd.Dir = wd
+
+	// 设置环境变量，跳过菜单直接启动
+	cmd.Env = append(os.Environ(), "SERIAL_SERVER_DAEMON=true")
 
 	// 重定向标准输出和错误到 /dev/null
 	devNull, err := os.OpenFile("/dev/null", os.O_RDWR, 0)

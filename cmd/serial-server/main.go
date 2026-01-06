@@ -24,7 +24,7 @@ import (
 
 const (
 	defaultConfigFile = "config.ini"
-	version           = "1.2.16"
+	version           = "1.2.17"
 
 	// 经典绿风格 - 颜色定义
 	colorGreen = "\x1b[32m" // 绿色
@@ -321,9 +321,12 @@ func main() {
 		}
 	}
 
+	// 检查是否是后台守护进程模式
+	daemonMode := os.Getenv("SERIAL_SERVER_DAEMON") == "true"
+
 	// 如果不是特殊模式，显示启动菜单
 showMenu:
-	if !listPorts && !checkConfig && !wizardMode {
+	if !listPorts && !checkConfig && !wizardMode && !daemonMode {
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
 		fmt.Fprintf(os.Stderr, "%s              Serial-Server v%s%s\n", getGreen(), version, getReset())
