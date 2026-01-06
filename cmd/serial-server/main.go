@@ -1001,7 +1001,7 @@ func runFRPMenu() {
 	for {
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
-		fmt.Fprintf(os.Stderr, "%s                    FRP 管理菜单%s\n", getGreen(), getReset())
+		fmt.Fprintf(os.Stderr, "%s                    FRP 管理菜单 (v%s)%s\n", getGreen(), version, getReset())
 		fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintf(os.Stderr, "%s请选择操作:%s\n", getGreen(), getReset())
@@ -1407,7 +1407,7 @@ func (m *runtimeManager) handleRuntimeCommand(req runtimeRequest) {
 func (m *runtimeManager) showHelp() {
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
-	fmt.Fprintf(os.Stderr, "%s                    运行时命令帮助%s\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s                    运行时命令帮助 (v%s)%s\n", getGreen(), version, getReset())
 	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintf(os.Stderr, "%s可用命令:%s\n", getGreen(), getReset())
@@ -1454,7 +1454,7 @@ func (m *runtimeManager) reloadConfig() error {
 func (m *runtimeManager) listConfigs() {
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
-	fmt.Fprintf(os.Stderr, "%s                    当前配置列表%s\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s                    当前配置列表 (v%s)%s\n", getGreen(), version, getReset())
 	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
 	fmt.Fprintln(os.Stderr, "")
 
@@ -1496,7 +1496,7 @@ func (m *runtimeManager) listConfigs() {
 func (m *runtimeManager) showStatus() {
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
-	fmt.Fprintf(os.Stderr, "%s                    运行状态%s\n", getGreen(), getReset())
+	fmt.Fprintf(os.Stderr, "%s                    运行状态 (v%s)%s\n", getGreen(), version, getReset())
 	fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
 	fmt.Fprintln(os.Stderr, "")
 
