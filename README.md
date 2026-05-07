@@ -2,7 +2,7 @@
 
 > 企业级串口服务器 - 将串口设备映射为 TCP 服务端口，支持多客户端并发访问和智能队列管理
 
-[![Go Version](https://img.shields.io/badge/Go-1.24.0-blue)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.20%2B-blue)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 ## 为什么选择 Serial-Server？
@@ -90,6 +90,7 @@ sequenceDiagram
 | **异常恢复** | 串口故障自动清理队列，启动失败提供恢复菜单 |
 | **FRP 集成** | 一键添加内网穿透代理，自动生成配置 |
 | **跨平台支持** | Windows COM1-256, Linux /dev/ttyUSB*, macOS /dev/cu.* |
+| **Win7 兼容发布** | Windows 版本使用 Go 1.20 构建（兼容 Windows 7 SP1） |
 | **日志审计** - 运行日志 + 异常日志（丢包/超时/写失败） |
 | **交互式向导** | 自动扫描串口，引导配置，降低使用门槛 |
 
