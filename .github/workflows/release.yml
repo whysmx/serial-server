@@ -64,6 +64,10 @@ jobs:
 
   build-windows-legacy:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        goarch: [amd64, 386]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -87,16 +91,16 @@ jobs:
         shell: pwsh
         run: |
           $env:GOOS="windows"
-          $env:GOARCH="amd64"
+          $env:GOARCH="${{ matrix.goarch }}"
           $env:CGO_ENABLED="0"
           $version = "${{ github.ref_name }}"
-          go build -trimpath -ldflags "-s -w" -o "serial-server-$version-windows-win7-amd64.exe" ./cmd/serial-server
+          go build -trimpath -ldflags "-s -w" -o "serial-server-$version-windows-win7-${{ matrix.goarch }}.exe" ./cmd/serial-server
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: serial-server-${{ github.ref_name }}-windows-win7-amd64.exe
-          path: serial-server-${{ github.ref_name }}-windows-win7-amd64.exe
+          name: serial-server-${{ github.ref_name }}-windows-win7-${{ matrix.goarch }}.exe
+          path: serial-server-${{ github.ref_name }}-windows-win7-${{ matrix.goarch }}.exe
 
   release:
     needs:
