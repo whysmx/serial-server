@@ -22,6 +22,7 @@ config.ini
 docs/menu-styles.html
 
 # Local development
+.codex-temp/
 scripts/
 .claude/
 CLAUDE.md

@@ -106,6 +106,10 @@ chmod +x serial-server
 
 # Windows
 serial-server.exe
+
+# Windows 7 SP1
+# 下载文件名带 windows-win7-amd64 的兼容版
+serial-server-*-windows-win7-amd64.exe
 ```
 
 ### 首次运行
