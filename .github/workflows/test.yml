@@ -10,6 +10,9 @@ jobs:
   # Linting and static analysis
   lint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,7 +55,7 @@ jobs:
 
       - name: Upload GoSec results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('gosec-results.sarif') != ''
         with:
           sarif_file: gosec-results.sarif
 
