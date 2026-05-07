@@ -38,7 +38,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.25.9"
 
       - name: Build
         shell: pwsh
@@ -80,7 +80,7 @@ jobs:
         run: |
           (Get-Content go.mod) |
             Where-Object { $_ -notmatch '^toolchain\s+' } |
-            ForEach-Object { $_ -replace '^go\s+1\.24\.0$', 'go 1.20' } |
+            ForEach-Object { $_ -replace '^go\s+.*$', 'go 1.20' } |
             Set-Content go.mod
 
       - name: Build Windows 7 SP1 legacy binary

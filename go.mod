@@ -1,8 +1,8 @@
 module github.com/whysmx/serial-server
 
-go 1.24.0
+go 1.25.0
 
-toolchain go1.24.11
+toolchain go1.25.9
 
 require (
 	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect

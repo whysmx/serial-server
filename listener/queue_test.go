@@ -316,7 +316,6 @@ func TestCacheDataIntegrity(t *testing.T) {
 	}
 }
 
-
 // ==================== Benchmarks ====================
 
 // BenchmarkRequestCache benchmarks request cache operations

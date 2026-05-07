@@ -17,7 +17,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.25.9"
 
       - name: Check go fmt
         run: |
@@ -67,7 +67,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.25.9"
 
       - name: Install dependencies
         run: |
@@ -147,7 +147,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.25.9"
 
       - name: Install dependencies
         run: |
@@ -200,7 +200,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.25.9"
 
       - name: Build for ${{ matrix.goos }}/${{ matrix.goarch }}
         run: |
@@ -227,7 +227,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.25.9"
 
       - name: Run Snyk security scan
         uses: snyk/actions/golang@master
@@ -253,7 +253,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.25.9"
 
       - name: Run benchmarks
         run: |
@@ -281,7 +281,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.25.9"
 
       - name: Run fuzz tests
         run: |

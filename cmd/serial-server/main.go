@@ -40,14 +40,14 @@ const (
 type runtimeCommand string
 
 const (
-	cmdReload   runtimeCommand = "reload"   // 重新加载配置
-	cmdAdd      runtimeCommand = "add"      // 添加配置
-	cmdModify   runtimeCommand = "modify"   // 修改配置
-	cmdDelete   runtimeCommand = "delete"   // 删除配置
-	cmdList     runtimeCommand = "list"     // 列出配置
-	cmdStatus   runtimeCommand = "status"   // 显示状态
-	cmdHelp     runtimeCommand = "help"     // 显示帮助
-	cmdFRPMenu  runtimeCommand = "frp"      // FRP 管理
+	cmdReload  runtimeCommand = "reload" // 重新加载配置
+	cmdAdd     runtimeCommand = "add"    // 添加配置
+	cmdModify  runtimeCommand = "modify" // 修改配置
+	cmdDelete  runtimeCommand = "delete" // 删除配置
+	cmdList    runtimeCommand = "list"   // 列出配置
+	cmdStatus  runtimeCommand = "status" // 显示状态
+	cmdHelp    runtimeCommand = "help"   // 显示帮助
+	cmdFRPMenu runtimeCommand = "frp"    // FRP 管理
 )
 
 // 运行时命令请求
@@ -1444,7 +1444,7 @@ func (m *runtimeManager) listenForCommands() {
 				}
 
 				if confirm != "y" && confirm != "yes" {
-					fmt.Fprintln(os.Stderr, "[INFO] 已取消操作\n")
+					fmt.Fprintln(os.Stderr, "[INFO] 已取消操作")
 					continue
 				}
 			}

@@ -2,7 +2,7 @@
 
 > 企业级串口服务器 - 将串口设备映射为 TCP 服务端口，支持多客户端并发访问和智能队列管理
 
-[![Go Version](https://img.shields.io/badge/Go-1.24.0-blue)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.25.9-blue)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 ## 为什么选择 Serial-Server？

@@ -385,4 +385,3 @@ func BenchmarkFindListenerByPort(b *testing.B) {
 		cfg.FindListenerByPort(8050)
 	}
 }
-
