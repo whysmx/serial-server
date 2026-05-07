@@ -22,13 +22,6 @@ const (
 	FRPCAdminPassword = "admin"
 )
 
-// 日志符号 - 使用 ASCII 兼容字符
-const (
-	symOK   = "[OK]"   // 成功
-	symERR  = "[ERR]"  // 错误
-	symWARN = "[WARN]" // 警告
-)
-
 // shouldUseColor 检测终端是否支持颜色
 func shouldUseColor() bool {
 	// 检查 NO_COLOR 环境变量
@@ -61,14 +54,12 @@ var (
 	useColor = shouldUseColor()
 	colorOK  string
 	colorERR string
-	colorRST string
 )
 
 func init() {
 	if useColor {
 		colorOK = "\x1b[32m"  // 绿色
 		colorERR = "\x1b[31m" // 红色
-		colorRST = "\x1b[0m"  // 重置
 	}
 }
 

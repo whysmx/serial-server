@@ -49,15 +49,16 @@ func startInBackground() {
 		fmt.Fprintf(os.Stderr, "打开 /dev/null 失败: %v\n", err)
 		os.Exit(1)
 	}
-	defer devNull.Close()
 	cmd.Stdout = devNull
 	cmd.Stderr = devNull
 
 	// 启动进程
 	if err := cmd.Start(); err != nil {
+		_ = devNull.Close()
 		fmt.Fprintf(os.Stderr, "启动后台进程失败: %v\n", err)
 		os.Exit(1)
 	}
+	_ = devNull.Close()
 
 	pid := cmd.Process.Pid
 

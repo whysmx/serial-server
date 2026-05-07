@@ -179,7 +179,7 @@ WantedBy=multi-user.target
 		fmt.Fprint(os.Stderr, "是否覆盖? [y/N]: ")
 
 		var confirm string
-		fmt.Scanln(&confirm)
+		_, _ = fmt.Scanln(&confirm)
 		if strings.ToLower(confirm) != "y" {
 			fmt.Fprintln(os.Stderr, "取消设置")
 			os.Exit(0)
@@ -187,7 +187,7 @@ WantedBy=multi-user.target
 	}
 
 	// 写入服务文件
-	if err := os.WriteFile(servicePath, []byte(serviceContent), 0644); err != nil {
+	if err := os.WriteFile(servicePath, []byte(serviceContent), 0600); err != nil {
 		fmt.Fprintf(os.Stderr, "写入服务文件失败: %v\n", err)
 		fmt.Fprintf(os.Stderr, "请使用 sudo 权限运行此程序\n")
 		os.Exit(1)
