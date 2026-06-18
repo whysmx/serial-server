@@ -351,6 +351,7 @@ func (l *Listener) serialReadLoop() {
 
 		if n > 0 {
 			// 追加到缓冲区
+			log.Printf("[listener:%s] serial read chunk [%d] %s", l.name, n, FormatForDisplayCompact(buf[:n], l.displayFormat))
 			l.serialBuffer = append(l.serialBuffer, buf[:n]...)
 		}
 	}
