@@ -334,9 +334,6 @@ func (l *Listener) serialReadLoop() {
 			// 追加到缓冲区
 			log.Printf("[listener:%s] serial read chunk [%d] %s", l.name, n, FormatForDisplayCompact(buf[:n], l.displayFormat))
 			l.serialBuffer = append(l.serialBuffer, buf[:n]...)
-			if hasFrameTerminator(l.serialBuffer) {
-				l.flushSerialBuffer()
-			}
 		}
 
 		if err != nil {
@@ -369,10 +366,6 @@ func (l *Listener) flushSerialBuffer() {
 	log.Printf("[listener:%s] serial frame complete [%d] %s", l.name, len(frame), FormatForDisplayCompact(frame, l.displayFormat))
 	l.writeQueue.OnSerialData(frame)
 	l.serialBuffer = nil
-}
-
-func hasFrameTerminator(data []byte) bool {
-	return len(data) >= 2 && data[len(data)-2] == 0x7d && data[len(data)-1] == 0x7d
 }
 
 // SetOnData sets the data callback.
