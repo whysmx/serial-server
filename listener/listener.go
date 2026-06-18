@@ -330,16 +330,20 @@ func (l *Listener) serialReadLoop() {
 
 		n, err := l.serial.Read(buf)
 
+		if n > 0 {
+			// 追加到缓冲区
+			log.Printf("[listener:%s] serial read chunk [%d] %s", l.name, n, FormatForDisplayCompact(buf[:n], l.displayFormat))
+			l.serialBuffer = append(l.serialBuffer, buf[:n]...)
+			if hasFrameTerminator(l.serialBuffer) {
+				l.flushSerialBuffer()
+			}
+		}
+
 		if err != nil {
 			// 超时或 EOF（带 ReadTimeout 时）是正常的，用于检测帧结束
 			if err.Error() == "timeout" || err.Error() == "i/o timeout" || err == io.EOF {
 				// 超时说明帧间隔到达，如果有缓冲数据则提交完整帧
-				if len(l.serialBuffer) > 0 {
-					frame := make([]byte, len(l.serialBuffer))
-					copy(frame, l.serialBuffer)
-					l.writeQueue.OnSerialData(frame)
-					l.serialBuffer = nil
-				}
+				l.flushSerialBuffer()
 				continue
 			}
 			if l.isClosedError(err.Error()) {
@@ -349,12 +353,26 @@ func (l *Listener) serialReadLoop() {
 			continue
 		}
 
-		if n > 0 {
-			// 追加到缓冲区
-			log.Printf("[listener:%s] serial read chunk [%d] %s", l.name, n, FormatForDisplayCompact(buf[:n], l.displayFormat))
-			l.serialBuffer = append(l.serialBuffer, buf[:n]...)
+		if n == 0 {
+			// Windows 上 tarm/serial 可能以 n=0, err=nil 表示 ReadTimeout。
+			l.flushSerialBuffer()
 		}
 	}
+}
+
+func (l *Listener) flushSerialBuffer() {
+	if len(l.serialBuffer) == 0 {
+		return
+	}
+	frame := make([]byte, len(l.serialBuffer))
+	copy(frame, l.serialBuffer)
+	log.Printf("[listener:%s] serial frame complete [%d] %s", l.name, len(frame), FormatForDisplayCompact(frame, l.displayFormat))
+	l.writeQueue.OnSerialData(frame)
+	l.serialBuffer = nil
+}
+
+func hasFrameTerminator(data []byte) bool {
+	return len(data) >= 2 && data[len(data)-2] == 0x7d && data[len(data)-1] == 0x7d
 }
 
 // SetOnData sets the data callback.
