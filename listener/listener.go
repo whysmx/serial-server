@@ -287,12 +287,20 @@ func (l *Listener) handleClient(conn net.Conn, addr string) {
 				resp, ok := <-respCh
 				if ok && len(resp) > 0 {
 					// Send response back to this client only
-					_, _ = conn.Write(resp)
+					_ = conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
+					written, writeErr := conn.Write(resp)
+					if writeErr != nil || written != len(resp) {
+						log.Printf("[listener:%s] TCP response write failed client=%s wrote=%d/%d err=%v",
+							l.name, idx, written, len(resp), writeErr)
+						return
+					}
 
 					atomic.AddUint64(&l.stats.RxBytes, uint64(len(resp)))
 					atomic.AddUint64(&l.stats.RxPackets, 1)
 
 					l.fireOnData(resp, "rx", idx)
+				} else {
+					log.Printf("[listener:%s] no serial response for client=%s", l.name, idx)
 				}
 			}(clientIndex)
 		}

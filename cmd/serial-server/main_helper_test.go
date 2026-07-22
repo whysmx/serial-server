@@ -7,6 +7,18 @@ import (
 	"testing"
 )
 
+func TestShouldShowStartupMenu(t *testing.T) {
+	if shouldShowStartupMenu(false, false, false, false) {
+		t.Fatal("default startup should bypass the menu")
+	}
+	if !shouldShowStartupMenu(true, false, false, false) {
+		t.Fatal("--menu should show the startup menu")
+	}
+	if shouldShowStartupMenu(true, true, false, false) {
+		t.Fatal("special command modes should bypass the menu")
+	}
+}
+
 // TestRemoveSections tests the removeSections function
 func TestRemoveSections(t *testing.T) {
 	tests := []struct {

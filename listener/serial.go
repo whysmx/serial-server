@@ -3,7 +3,6 @@ package listener
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os/exec"
 	"path/filepath"
@@ -12,16 +11,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tarm/serial"
+	serial "go.bug.st/serial"
 )
 
 // Port represents a serial port connection.
 type Port struct {
-	mu     sync.RWMutex
-	config *serial.Config
-	port   io.ReadWriteCloser
-	name   string
-	baud   int
+	mu   sync.RWMutex
+	port serial.Port
+	name string
+	baud int
 }
 
 // Open opens a serial port with the given configuration.
@@ -29,11 +27,11 @@ func Open(portName string, baudRate int, dataBits int, stopBits int, parity stri
 	var parityVal serial.Parity
 	switch parity {
 	case "N", "n", "None", "":
-		parityVal = serial.ParityNone
+		parityVal = serial.NoParity
 	case "O", "o", "Odd":
-		parityVal = serial.ParityOdd
+		parityVal = serial.OddParity
 	case "E", "e", "Even":
-		parityVal = serial.ParityEven
+		parityVal = serial.EvenParity
 	default:
 		return nil, fmt.Errorf("unsupported parity: %s (supported: N/O/E)", parity)
 	}
@@ -41,9 +39,9 @@ func Open(portName string, baudRate int, dataBits int, stopBits int, parity stri
 	var stopBitsVal serial.StopBits
 	switch stopBits {
 	case 1:
-		stopBitsVal = serial.Stop1
+		stopBitsVal = serial.OneStopBit
 	case 2:
-		stopBitsVal = serial.Stop2
+		stopBitsVal = serial.TwoStopBits
 	default:
 		return nil, fmt.Errorf("unsupported stop bits: %d (supported: 1 or 2)", stopBits)
 	}
@@ -56,28 +54,37 @@ func Open(portName string, baudRate int, dataBits int, stopBits int, parity stri
 		log.Printf("[serial] WARNING: RTS/CTS flow control requested but not supported")
 	}
 
-	config := &serial.Config{
-		Name:        portName,
-		Baud:        baudRate,
-		ReadTimeout: 50 * time.Millisecond,
-		Size:        byte(dataBits),
-		Parity:      parityVal,
-		StopBits:    stopBitsVal,
+	mode := &serial.Mode{
+		BaudRate: baudRate,
+		DataBits: dataBits,
+		Parity:   parityVal,
+		StopBits: stopBitsVal,
+		InitialStatusBits: &serial.ModemOutputBits{
+			DTR: true,
+			RTS: true,
+		},
 	}
 
-	port, err := serial.OpenPort(config)
+	port, err := serial.Open(portName, mode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open serial port %s: %w", portName, err)
 	}
+	if err := port.SetReadTimeout(50 * time.Millisecond); err != nil {
+		_ = port.Close()
+		return nil, fmt.Errorf("failed to set read timeout for serial port %s: %w", portName, err)
+	}
+	if err := port.ResetInputBuffer(); err != nil {
+		_ = port.Close()
+		return nil, fmt.Errorf("failed to reset input buffer for serial port %s: %w", portName, err)
+	}
 
-	log.Printf("[serial] opened %s baud=%d size=%d parity=%s stop=%d",
-		portName, baudRate, dataBits, parity, stopBits)
+	log.Printf("[serial] opened %s baud=%d size=%d parity=%s stop=%d dtr=on rts=on flow=none read_timeout=50ms",
+		portName, baudRate, dataBits, strings.ToUpper(parity), stopBits)
 
 	return &Port{
-		config: config,
-		port:   port,
-		name:   portName,
-		baud:   baudRate,
+		port: port,
+		name: portName,
+		baud: baudRate,
 	}, nil
 }
 
@@ -251,14 +258,7 @@ func ScanAvailablePorts() []string {
 	var ports []string
 
 	if IsWindows() {
-		for i := 1; i <= 256; i++ {
-			portName := fmt.Sprintf("COM%d", i)
-			c := &serial.Config{Name: portName, Baud: 9600}
-			if s, err := serial.OpenPort(c); err == nil {
-				s.Close()
-				ports = append(ports, portName)
-			}
-		}
+		ports, _ = serial.GetPortsList()
 	} else {
 		if matches, err := filepath.Glob("/dev/COM*"); err == nil {
 			for _, m := range matches {

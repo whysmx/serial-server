@@ -24,7 +24,7 @@ import (
 
 const (
 	defaultConfigFile = "config.ini"
-	version           = "1.2.19"
+	version           = "1.2.20"
 
 	// 经典绿风格 - 颜色定义
 	colorGreen = "\x1b[32m" // 绿色
@@ -72,6 +72,7 @@ var (
 	checkConfig bool
 	wizardMode  bool
 	showConfig  bool
+	menuMode    bool
 	logFile     string
 	logLevel    string
 	showVersion bool
@@ -89,6 +90,7 @@ func init() {
 	flag.BoolVar(&checkConfig, "check", false, "验证配置文件")
 	flag.BoolVar(&wizardMode, "wizard", false, "进入交互式配置向导")
 	flag.BoolVar(&showConfig, "show-config", false, "显示配置信息")
+	flag.BoolVar(&menuMode, "menu", false, "显示交互式管理菜单（已有配置默认直接启动）")
 	flag.StringVar(&logFile, "log", "", "日志文件路径（默认 serial-server.log）")
 	flag.StringVar(&logLevel, "level", "info", "日志级别: debug, info, warn, error")
 	flag.BoolVar(&showVersion, "version", false, "显示版本信息")
@@ -321,12 +323,9 @@ func main() {
 		}
 	}
 
-	// 检查是否是后台守护进程模式
-	daemonMode := os.Getenv("SERIAL_SERVER_DAEMON") == "true"
-
-	// 如果不是特殊模式，显示启动菜单
+	// 已有配置默认直接启动，便于无人值守和开机自启。管理操作使用 --menu。
 showMenu:
-	if !listPorts && !checkConfig && !wizardMode && !daemonMode {
+	if shouldShowStartupMenu(menuMode, listPorts, checkConfig, wizardMode) {
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintf(os.Stderr, "%s═══════════════════════════════════════════════════════%s\n", getGreen(), getReset())
 		fmt.Fprintf(os.Stderr, "%s              Serial-Server v%s%s\n", getGreen(), version, getReset())
@@ -533,6 +532,10 @@ showMenu:
 		}
 		break
 	}
+}
+
+func shouldShowStartupMenu(menu, listing, checking, wizard bool) bool {
+	return menu && !listing && !checking && !wizard
 }
 
 // modifyConfigInteractively 交互式修改配置
@@ -1009,17 +1012,8 @@ func printConfigSummary(cfg *config.Config) {
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintf(os.Stderr, "%s配置摘要:%s\n", getGreen(), getReset())
 	for i, l := range cfg.Listeners {
-		frpStatus := checkFRPStatus(l.SerialPort, l.ListenPort)
-		// 根据 FRP 状态选择颜色
-		var statusColor string
-		if frpStatus == emojiYes {
-			statusColor = getGreen()
-		} else {
-			statusColor = getRed()
-		}
-		fmt.Fprintf(os.Stderr, "  %d. %s:[%d %s %d %d %s] 端口[%d] frp[%s%s%s]\n",
-			i+1, l.SerialPort, l.BaudRate, l.Parity, l.DataBits, l.StopBits, l.DisplayFormat, l.ListenPort,
-			statusColor, frpStatus, getReset())
+		fmt.Fprintf(os.Stderr, "  %d. %s:[%d %s %d %d %s] 端口[%d]\n",
+			i+1, l.SerialPort, l.BaudRate, l.Parity, l.DataBits, l.StopBits, l.DisplayFormat, l.ListenPort)
 	}
 }
 

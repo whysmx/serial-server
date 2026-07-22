@@ -244,6 +244,8 @@ func (q *WriteQueue) Send(clientID string, data []byte) <-chan []byte {
 	// Append to queue
 	q.pending = append(q.pending, req)
 	q.clientIndex[clientID] = len(q.pending) - 1
+	log.Printf("[serial] queued: req_id=%d client=%s bytes=%d queue_depth=%d data=%s",
+		req.ID, req.ClientID, len(req.Request), len(q.pending), FormatForDisplayCompact(req.Request, FormatHEX))
 
 	// If this is the only request, send immediately
 	if len(q.pending) == 1 {
@@ -279,7 +281,16 @@ func (q *WriteQueue) sendToSerial(req *PendingRequest) {
 	q.mu.Unlock()
 
 	// Step 2: Write to serial port (without lock)
+	writeStarted := time.Now()
+	log.Printf("[serial] write start: req_id=%d client=%s bytes=%d", req.ID, req.ClientID, len(req.Request))
+	watchdog := time.AfterFunc(time.Second, func() {
+		log.Printf("[serial] WARNING: write still blocked after 1s: req_id=%d client=%s port=%s",
+			req.ID, req.ClientID, q.serial.Name())
+		logIssuef("serial write blocked: req_id=%d client=%s port=%s elapsed=>1s", req.ID, req.ClientID, q.serial.Name())
+	})
 	n, err := q.serial.Write(req.Request)
+	watchdog.Stop()
+	writeDuration := time.Since(writeStarted)
 	if err == nil && n != len(req.Request) {
 		err = io.ErrShortWrite
 	}
@@ -343,7 +354,8 @@ func (q *WriteQueue) sendToSerial(req *PendingRequest) {
 	req.SentAt = time.Now()
 	q.currentReqID = req.ID
 	q.respState.Store(respStateWaiting)
-	log.Printf("[serial] write ok: req_id=%d client=%s bytes=%d data=%s", req.ID, req.ClientID, n, FormatForDisplayCompact(req.Request, FormatHEX))
+	log.Printf("[serial] write ok: req_id=%d client=%s bytes=%d elapsed=%s data=%s",
+		req.ID, req.ClientID, n, writeDuration.Round(time.Millisecond), FormatForDisplayCompact(req.Request, FormatHEX))
 	q.mu.Unlock()
 }
 
@@ -387,6 +399,8 @@ func (q *WriteQueue) OnSerialData(data []byte) {
 
 	// Accumulate data
 	q.respBuf = append(q.respBuf, data...)
+	log.Printf("[serial] response chunk: req_id=%d client=%s bytes=%d total=%d",
+		req.ID, req.ClientID, len(data), len(q.respBuf))
 
 	// Reset or create flush timer
 	if q.respTimer != nil {
@@ -501,6 +515,8 @@ func (q *WriteQueue) flushResponseLocked() {
 	// Clear response buffer
 	responseData := q.respBuf
 	q.respBuf = nil
+	log.Printf("[serial] response complete: req_id=%d client=%s bytes=%d rtt=%s",
+		req.ID, req.ClientID, len(responseData), rtt.Round(time.Millisecond))
 
 	// Capture next request head (if any) after removing current
 	var nextReq *PendingRequest
