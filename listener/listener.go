@@ -287,12 +287,20 @@ func (l *Listener) handleClient(conn net.Conn, addr string) {
 				resp, ok := <-respCh
 				if ok && len(resp) > 0 {
 					// Send response back to this client only
-					_, _ = conn.Write(resp)
+					_ = conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
+					written, writeErr := conn.Write(resp)
+					if writeErr != nil || written != len(resp) {
+						log.Printf("[listener:%s] TCP response write failed client=%s wrote=%d/%d err=%v",
+							l.name, idx, written, len(resp), writeErr)
+						return
+					}
 
 					atomic.AddUint64(&l.stats.RxBytes, uint64(len(resp)))
 					atomic.AddUint64(&l.stats.RxPackets, 1)
 
 					l.fireOnData(resp, "rx", idx)
+				} else {
+					log.Printf("[listener:%s] no serial response for client=%s", l.name, idx)
 				}
 			}(clientIndex)
 		}
@@ -330,16 +338,17 @@ func (l *Listener) serialReadLoop() {
 
 		n, err := l.serial.Read(buf)
 
+		if n > 0 {
+			// 追加到缓冲区
+			log.Printf("[listener:%s] serial read chunk [%d] %s", l.name, n, FormatForDisplayCompact(buf[:n], l.displayFormat))
+			l.serialBuffer = append(l.serialBuffer, buf[:n]...)
+		}
+
 		if err != nil {
 			// 超时或 EOF（带 ReadTimeout 时）是正常的，用于检测帧结束
 			if err.Error() == "timeout" || err.Error() == "i/o timeout" || err == io.EOF {
 				// 超时说明帧间隔到达，如果有缓冲数据则提交完整帧
-				if len(l.serialBuffer) > 0 {
-					frame := make([]byte, len(l.serialBuffer))
-					copy(frame, l.serialBuffer)
-					l.writeQueue.OnSerialData(frame)
-					l.serialBuffer = nil
-				}
+				l.flushSerialBuffer()
 				continue
 			}
 			if l.isClosedError(err.Error()) {
@@ -349,11 +358,22 @@ func (l *Listener) serialReadLoop() {
 			continue
 		}
 
-		if n > 0 {
-			// 追加到缓冲区
-			l.serialBuffer = append(l.serialBuffer, buf[:n]...)
+		if n == 0 {
+			// Windows 上 tarm/serial 可能以 n=0, err=nil 表示 ReadTimeout。
+			l.flushSerialBuffer()
 		}
 	}
+}
+
+func (l *Listener) flushSerialBuffer() {
+	if len(l.serialBuffer) == 0 {
+		return
+	}
+	frame := make([]byte, len(l.serialBuffer))
+	copy(frame, l.serialBuffer)
+	log.Printf("[listener:%s] serial frame complete [%d] %s", l.name, len(frame), FormatForDisplayCompact(frame, l.displayFormat))
+	l.writeQueue.OnSerialData(frame)
+	l.serialBuffer = nil
 }
 
 // SetOnData sets the data callback.

@@ -2,6 +2,8 @@
 package listener
 
 import (
+	"io"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -11,6 +13,11 @@ const (
 	defaultCacheTTL  = 5 * time.Second
 	requestTimeout   = 3 * time.Second
 	respFlushTimeout = 50 * time.Millisecond // 50ms内数据合并显示
+
+	// Serial bridge mode must forward every client frame to the device. Response
+	// caching and duplicate coalescing can hide repeated polling frames and return
+	// stale data for devices whose response changes between identical commands.
+	enableResponseCache = false
 )
 
 // cacheEntry represents a cached response with expiration time.
@@ -182,35 +189,41 @@ func (q *WriteQueue) Send(clientID string, data []byte) <-chan []byte {
 	hash := hashData(data)
 
 	// Check cache first
-	if cached, found := q.cache.Get(hash); found {
-		respCh <- cached
-		close(respCh)
-		return respCh
+	if enableResponseCache {
+		if cached, found := q.cache.Get(hash); found {
+			respCh <- cached
+			close(respCh)
+			return respCh
+		}
 	}
 
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	// Double check cache after acquiring lock
-	if cached, found := q.cache.Get(hash); found {
-		respCh <- cached
-		close(respCh)
-		return respCh
+	if enableResponseCache {
+		if cached, found := q.cache.Get(hash); found {
+			respCh <- cached
+			close(respCh)
+			return respCh
+		}
 	}
 
 	// Check if there's already an inflight request with the same hash
-	if _, found := q.inflight[hash]; found {
-		// Same request is being processed, add to waiting list
-		req := &PendingRequest{
-			ClientID:   clientID,
-			DataHash:   hash,
-			Request:    data,
-			ResponseCh: respCh,
-			Timestamp:  time.Now(),
+	if enableResponseCache {
+		if _, found := q.inflight[hash]; found {
+			// Same request is being processed, add to waiting list
+			req := &PendingRequest{
+				ClientID:   clientID,
+				DataHash:   hash,
+				Request:    data,
+				ResponseCh: respCh,
+				Timestamp:  time.Now(),
+			}
+			q.waiting[hash] = append(q.waiting[hash], req)
+			q.clientIndex[clientID] = -1 // Mark as waiting
+			return respCh
 		}
-		q.waiting[hash] = append(q.waiting[hash], req)
-		q.clientIndex[clientID] = -1 // Mark as waiting
-		return respCh
 	}
 
 	// Create new pending request with unique ID
@@ -223,12 +236,16 @@ func (q *WriteQueue) Send(clientID string, data []byte) <-chan []byte {
 		Timestamp:  time.Now(),
 	}
 
-	// Add to inflight map (so subsequent same requests can find it)
-	q.inflight[hash] = req
+	if enableResponseCache {
+		// Add to inflight map (so subsequent same requests can find it)
+		q.inflight[hash] = req
+	}
 
 	// Append to queue
 	q.pending = append(q.pending, req)
 	q.clientIndex[clientID] = len(q.pending) - 1
+	log.Printf("[serial] queued: req_id=%d client=%s bytes=%d queue_depth=%d data=%s",
+		req.ID, req.ClientID, len(req.Request), len(q.pending), FormatForDisplayCompact(req.Request, FormatHEX))
 
 	// If this is the only request, send immediately
 	if len(q.pending) == 1 {
@@ -264,7 +281,19 @@ func (q *WriteQueue) sendToSerial(req *PendingRequest) {
 	q.mu.Unlock()
 
 	// Step 2: Write to serial port (without lock)
-	_, err := q.serial.Write(req.Request)
+	writeStarted := time.Now()
+	log.Printf("[serial] write start: req_id=%d client=%s bytes=%d", req.ID, req.ClientID, len(req.Request))
+	watchdog := time.AfterFunc(time.Second, func() {
+		log.Printf("[serial] WARNING: write still blocked after 1s: req_id=%d client=%s port=%s",
+			req.ID, req.ClientID, q.serial.Name())
+		logIssuef("serial write blocked: req_id=%d client=%s port=%s elapsed=>1s", req.ID, req.ClientID, q.serial.Name())
+	})
+	n, err := q.serial.Write(req.Request)
+	watchdog.Stop()
+	writeDuration := time.Since(writeStarted)
+	if err == nil && n != len(req.Request) {
+		err = io.ErrShortWrite
+	}
 
 	// Step 3: Handle write result with lock
 	q.mu.Lock()
@@ -325,6 +354,8 @@ func (q *WriteQueue) sendToSerial(req *PendingRequest) {
 	req.SentAt = time.Now()
 	q.currentReqID = req.ID
 	q.respState.Store(respStateWaiting)
+	log.Printf("[serial] write ok: req_id=%d client=%s bytes=%d elapsed=%s data=%s",
+		req.ID, req.ClientID, n, writeDuration.Round(time.Millisecond), FormatForDisplayCompact(req.Request, FormatHEX))
 	q.mu.Unlock()
 }
 
@@ -368,6 +399,8 @@ func (q *WriteQueue) OnSerialData(data []byte) {
 
 	// Accumulate data
 	q.respBuf = append(q.respBuf, data...)
+	log.Printf("[serial] response chunk: req_id=%d client=%s bytes=%d total=%d",
+		req.ID, req.ClientID, len(data), len(q.respBuf))
 
 	// Reset or create flush timer
 	if q.respTimer != nil {
@@ -449,13 +482,18 @@ func (q *WriteQueue) flushResponseLocked() {
 		cacheTTL = 30 * time.Second
 	}
 
-	// Store in cache with dynamic TTL
-	q.cache.SetWithTTL(req.DataHash, q.respBuf, cacheTTL)
+	if enableResponseCache {
+		// Store in cache with dynamic TTL
+		q.cache.SetWithTTL(req.DataHash, q.respBuf, cacheTTL)
+	}
 
 	// Get all waiting requests with the same hash
 	hash := req.DataHash
-	waitingList := q.waiting[hash]
-	delete(q.waiting, hash)
+	var waitingList []*PendingRequest
+	if enableResponseCache {
+		waitingList = q.waiting[hash]
+		delete(q.waiting, hash)
+	}
 
 	// Remove main request and all waiting clients from index
 	delete(q.clientIndex, req.ClientID)
@@ -463,8 +501,10 @@ func (q *WriteQueue) flushResponseLocked() {
 		delete(q.clientIndex, w.ClientID)
 	}
 
-	// Remove from inflight map (so new requests can be enqueued)
-	delete(q.inflight, hash)
+	if enableResponseCache {
+		// Remove from inflight map (so new requests can be enqueued)
+		delete(q.inflight, hash)
+	}
 
 	// Remove from queue and reset state
 	// State will be set by sendToSerial when next request is actually sent
@@ -475,6 +515,8 @@ func (q *WriteQueue) flushResponseLocked() {
 	// Clear response buffer
 	responseData := q.respBuf
 	q.respBuf = nil
+	log.Printf("[serial] response complete: req_id=%d client=%s bytes=%d rtt=%s",
+		req.ID, req.ClientID, len(responseData), rtt.Round(time.Millisecond))
 
 	// Capture next request head (if any) after removing current
 	var nextReq *PendingRequest
@@ -573,6 +615,7 @@ func (q *WriteQueue) CleanupExpired() {
 	// Finish all expired requests (unlock first)
 	q.mu.Unlock()
 	for _, req := range expired {
+		log.Printf("[serial] request timeout: req_id=%d client=%s bytes=%d data=%s", req.ID, req.ClientID, len(req.Request), FormatForDisplayCompact(req.Request, FormatHEX))
 		logIssuef("request timeout: req_id=%d client=%s hash=%d sent_at=%v queued_at=%v", req.ID, req.ClientID, req.DataHash, req.SentAt, req.Timestamp)
 		req.finishNoResponse()
 	}
