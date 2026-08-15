@@ -24,7 +24,7 @@ import (
 
 const (
 	defaultConfigFile = "config.ini"
-	version           = "1.2.19"
+	version           = "1.2.20"
 
 	// 经典绿风格 - 颜色定义
 	colorGreen = "\x1b[32m" // 绿色
@@ -236,6 +236,7 @@ func main() {
 		logFile = "serial-server.log"
 	}
 
+	cleanupLogFiles()
 	setupLogging()
 
 	if listPorts {
